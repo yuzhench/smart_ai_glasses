@@ -1,0 +1,14 @@
+{
+  "dataset": "egolife_jake",
+  "path": 2,
+  "memory_backend": "gemini-cloud",
+  "consolidation_backend": "gemini-cloud",
+  "period_s": 1200,
+  "moss": false,
+  "qa": {
+    "questions": "bench/configs/datasets/egolife_jake_qa.json",
+    "backend": "gemini-cloud",
+    "topk": 10
+  },
+  "output_dir": "bench/results/jake_path2_gemini"
+}

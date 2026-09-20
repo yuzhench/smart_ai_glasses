@@ -1,0 +1,23 @@
+{
+  "qwen-local": {
+    "type": "local"
+  },
+  "qwen-vllm": {
+    "type": "openai_compatible",
+    "base_url": "http://gpu-box:8000/v1",
+    "model": "Qwen/Qwen2.5-Omni-7B",
+    "api_key_env": "VLLM_API_KEY"
+  },
+  "gemini-cloud": {
+    "type": "openai_compatible",
+    "base_url": "https://generativelanguage.googleapis.com/v1beta/openai",
+    "model": "gemini-2.5-pro",
+    "api_key_env": "GEMINI_API_KEY"
+  },
+  "gpt-consol": {
+    "type": "openai_compatible",
+    "base_url": "https://api.openai.com/v1",
+    "model": "gpt-5",
+    "api_key_env": "OPENAI_API_KEY"
+  }
+}
