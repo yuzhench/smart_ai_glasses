@@ -67,6 +67,7 @@ class WhenEvent:
     urgency: Urgency = Urgency.NORMAL
     cooldown_until: Optional[float] = None
     raw_score: Optional[float] = None    # 未经 EMA 的瞬时分，调参时有用
+    smoothed_score: Optional[float] = None  # 快 EMA：当前视觉状态
     baseline: Optional[float] = None     # 该 query 自己的长期基线（relative 模式）
     event_id: str = field(default_factory=lambda: uuid.uuid4().hex[:12])
     t_wall: float = field(default_factory=time.time)

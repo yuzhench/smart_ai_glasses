@@ -486,8 +486,14 @@ class FinalExecutor:
         print("-" * 68)
         print("Trigger :", kind)
         print("Detected:", description)
-        print("Score   :", f"{event.score:.3f}")
+        print("WHEN lift:", f"{event.score:.3f}")
         print("Threshold:", f"{event.threshold:.3f}")
+        print(
+            "Raw/Fast/Base:",
+            f"{event.raw_score:.3f} / "
+            f"{event.smoothed_score:.3f} / "
+            f"{event.baseline:.3f}",
+        )
         print("Answer  :", answer)
         if object_evidence and object_evidence.prompt_context:
             print("Objects :", object_evidence.prompt_context)

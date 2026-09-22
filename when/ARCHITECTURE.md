@@ -66,6 +66,7 @@ flowchart LR
     GMC --> TRACK[稳定 track_id]
     TRACK --> STATE[更新当前位置、置信度<br/>首次/最后出现时间]
     STATE --> EXPIRE[超过 1.5 秒未见<br/>不再作为当前证据]
+    STATE --> OVERLAY[视频叠加框<br/>track_id + detection score]
 ```
 
 默认跟踪 COCO 中与眼镜场景较相关的 19 类物体，包括人、常见交通工具、包、杯瓶、

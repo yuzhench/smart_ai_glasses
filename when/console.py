@@ -67,11 +67,13 @@ class ConsoleSink:
             head = _c(f"▶ TRIGGER {e.trigger_type.value}", col + _BOLD)
             nov = f" nov={e.evidence.novelty:.3f}" if e.evidence.novelty is not None else ""
             raw = f"{e.raw_score:.3f}" if e.raw_score is not None else "-"
+            fast = f"{e.smoothed_score:.3f}" if e.smoothed_score is not None else "-"
             base = f"{e.baseline:.3f}" if e.baseline is not None else "-"
             frames = f"  frames={e.evidence.frame_idx}" if e.evidence.frame_idx else ""
             print(
                 f"[{e.t_emit:7.2f}s] {head}  {_c(e.query.query_id or '-', _BOLD)}  "
-                f"lift={e.score:+.3f} thr={e.threshold:.2f} (raw={raw} base={base})"
+                f"lift={e.score:+.3f} thr={e.threshold:.3f} "
+                f"(raw={raw} fast={fast} base={base})"
                 f"{nov}  urgency={e.urgency.value}{frames}"
             )
             print(f"           {_DIM}query:{_RESET} {e.query.text}")

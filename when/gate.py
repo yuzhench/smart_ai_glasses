@@ -430,6 +430,8 @@ class VisualGate:
 
             on_thr, off_thr, min_raw = self.thresholds(st)
             value = st.lift if g.mode == "relative" else st.fast
+            fast_at_decision = st.fast
+            baseline_at_decision = st.slow
 
             fired = False
             warm = t >= g.warmup_s
@@ -465,8 +467,17 @@ class VisualGate:
                     query=QueryRef(text=q.text, origin=_ORIGIN[q.trigger_type], query_id=q.id),
                     score=round(value, 4),
                     raw_score=round(float(raw[i]), 4),
+                    smoothed_score=(
+                        round(float(fast_at_decision), 4)
+                        if fast_at_decision is not None
+                        else None
+                    ),
                     threshold=on_thr,
-                    baseline=round(st.slow, 4) if st.slow is not None else None,
+                    baseline=(
+                        round(float(baseline_at_decision), 4)
+                        if baseline_at_decision is not None
+                        else None
+                    ),
                     evidence=Evidence(
                         window=[round(window_start, 3), round(t, 3)],
                         frame_idx=list(range(max(0, self._frame_i - 4), self._frame_i + 1)),
@@ -490,6 +501,7 @@ def emit_instant(seq: int, t: float, text: str, audio_rms: Optional[float] = Non
         query=QueryRef(text=text, origin=QueryOrigin.USER_SPEECH, query_id=None),
         score=1.0,
         raw_score=1.0,
+        smoothed_score=1.0,
         threshold=0.0,
         evidence=Evidence(window=[round(t, 3), round(t, 3)], audio_rms=audio_rms),
         urgency=Urgency.NORMAL,

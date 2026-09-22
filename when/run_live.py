@@ -46,6 +46,7 @@ try:
     from .types import TriggerType, Urgency
     from integration.pipeline import RoutingPipeline
     from integration.audio_state import should_ignore_input
+    from routing.perception import draw_track_overlay
 except ModuleNotFoundError as exc:
     _MISSING = exc.name
 else:
@@ -85,6 +86,12 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--aria-size", type=int, default=640, help="Aria 桥接下采样到的边长")
     p.add_argument("--jsonl", help="把完整事件流写到这个文件")
     p.add_argument("--no-display", action="store_true")
+    p.add_argument(
+        "--track-overlay",
+        choices=("off", "phone", "all"),
+        default="phone",
+        help="视频框显示的跟踪结果：默认只框手机，也可关闭或显示全部类别",
+    )
     p.add_argument("--no-audio", action="store_true", help="只跑视觉，不开麦克风")
     p.add_argument("--fps", type=float, help="覆盖配置里的门采样率")
     p.add_argument("--asr-model", default="mlx-community/whisper-small-mlx",
@@ -520,6 +527,7 @@ def main(argv=None) -> int:
     _on, _off, _mr = gate.thresholds()
     _sm = _score_mode_label(cfg, gate)
     print(f"\n门采样率 {cfg.gate.fps} FPS，打分={_sm}，on={_on} min_raw={_mr}")
+    print("状态条含义：方块=当前 raw score，右侧 +/- 数字=相对基线的 lift")
     print("对着麦克风说话即可：")
     print("  · 「如果我拿起手机就提醒我」   → 注册一条持续监测")
     print("  · 「这是什么」                 → 即时提问，直接出标签")
@@ -553,7 +561,23 @@ def main(argv=None) -> int:
                 t,
             )
             if not args.no_display:
-                cv2.imshow("WHEN live — 按 q 退出", bgr)
+                display_bgr = bgr
+                if args.track_overlay != "off":
+                    labels = (
+                        {"cell phone"}
+                        if args.track_overlay == "phone"
+                        else None
+                    )
+                    display_bgr = draw_track_overlay(
+                        bgr.copy(),
+                        routing_pipeline.object_tracker.snapshot(),
+                        labels=labels,
+                        tracker_ready=routing_pipeline.object_tracker.available,
+                        tracker_latency_s=(
+                            routing_pipeline.object_tracker.last_latency_s
+                        ),
+                    )
+                cv2.imshow("WHEN live — 按 q 退出", display_bgr)
                 if cv2.waitKey(1) & 0xFF == ord("q"):
                     break
             else:
