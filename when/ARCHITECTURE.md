@@ -17,8 +17,8 @@ flowchart LR
 
     subgraph PERCEPTION[持续视觉状态]
         LATEST[最新帧队列<br/>容量 1]
-        YOLO[Ultralytics 检测<br/>最多 5 FPS]
-        BOTSORT[BoT-SORT<br/>ID + 全局运动补偿]
+        YOLO[YOLO11s · 80 类<br/>目标 8 FPS]
+        BOTSORT[BoT-SORT<br/>ID + 运动补偿 + ReID]
         STORE[当前物体表<br/>类别 · 框 · 置信度<br/>位置 · 已出现时长]
         LATEST --> YOLO --> BOTSORT --> STORE
     end
@@ -57,7 +57,7 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-    FRAME[新 RGB 帧] --> LIMIT{距上次提交<br/>≥ 0.2 秒?}
+    FRAME[新 RGB 帧] --> LIMIT{距上次提交<br/>≥ 0.125 秒?}
     LIMIT -->|否| SKIP[跳过]
     LIMIT -->|是| SLOT[单槽队列<br/>新帧覆盖旧帧]
     SLOT --> DETECT[YOLO 检测常见物体]
@@ -69,9 +69,9 @@ flowchart LR
     STATE --> OVERLAY[视频叠加框<br/>track_id + detection score]
 ```
 
-默认跟踪 COCO 中与眼镜场景较相关的 19 类物体，包括人、常见交通工具、包、杯瓶、
-桌椅、屏幕、手机、书、猫和狗。类别、模型、FPS 和阈值都可在 `.env` 中调整；手和门
-不在基础 COCO 类别中，需要以后接自定义或开放词汇检测模型。
+默认检测并跟踪 YOLO11 COCO 的全部 80 类物体，包括手机、鼠标、键盘、常见交通工具、
+家具、食物和动物。类别、模型、FPS 和阈值都可在 `.env` 中调整；手和门不在基础
+COCO 类别中，需要以后接自定义或开放词汇检测模型。
 
 ## 3. 跟踪结果如何帮助回答
 

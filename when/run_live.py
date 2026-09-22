@@ -89,8 +89,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument(
         "--track-overlay",
         choices=("off", "phone", "all"),
-        default="phone",
-        help="视频框显示的跟踪结果：默认只框手机，也可关闭或显示全部类别",
+        default="all",
+        help="视频框显示的跟踪结果：默认显示全部类别，也可只框手机或关闭",
     )
     p.add_argument("--no-audio", action="store_true", help="只跑视觉，不开麦克风")
     p.add_argument("--fps", type=float, help="覆盖配置里的门采样率")

@@ -33,8 +33,10 @@ python -m when.run_live --no-preset --negatives auto
 
 `.env` 只保存在本机，不会被 Git 跟踪。物体跟踪默认开启；可用
 `OBJECT_TRACKING_ENABLED=0` 临时关闭。第一次使用默认模型时，Ultralytics 会下载权重。
-实时窗口默认只显示手机的框、track ID 和检测置信度；使用
-`--track-overlay all` 显示全部跟踪类别，或用 `--track-overlay off` 关闭叠加层。
+实时窗口默认显示全部检测框、track ID 和检测置信度；使用
+`--track-overlay phone` 只显示手机，或用 `--track-overlay off` 关闭叠加层。默认检测器为
+`yolo11s`，跟踪器使用移动相机补偿和外观 ReID；通过 `.env` 可以切回更快的
+`yolo11n.pt`。
 
 完整架构图见 [`when/ARCHITECTURE.md`](when/ARCHITECTURE.md)，Luna 的 2500 条
 WearVQA 运行与评分记录见

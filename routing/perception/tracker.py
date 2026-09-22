@@ -4,29 +4,13 @@ import os
 import queue
 import threading
 import time
+from collections import Counter, deque
 from dataclasses import dataclass
+from pathlib import Path
 
 
-DEFAULT_LABELS = (
-    "person",
-    "bicycle",
-    "car",
-    "motorcycle",
-    "bus",
-    "backpack",
-    "handbag",
-    "suitcase",
-    "bottle",
-    "cup",
-    "bowl",
-    "chair",
-    "dining table",
-    "tv",
-    "laptop",
-    "cell phone",
-    "book",
-    "cat",
-    "dog",
+DEFAULT_TRACKER_CONFIG = str(
+    Path(__file__).with_name("botsort_egocentric.yaml")
 )
 
 
@@ -40,37 +24,43 @@ def _env_bool(name: str, default: bool) -> bool:
 @dataclass(frozen=True)
 class ObjectTrackerConfig:
     enabled: bool = True
-    model: str = "yolo11n.pt"
-    tracker: str = "botsort.yaml"
+    model: str = "yolo11s.pt"
+    tracker: str = DEFAULT_TRACKER_CONFIG
     device: str = "auto"
-    fps: float = 5.0
-    confidence: float = 0.25
+    fps: float = 8.0
+    confidence: float = 0.15
     iou: float = 0.50
     image_size: int = 640
-    max_staleness_s: float = 1.5
-    labels: tuple[str, ...] = DEFAULT_LABELS
+    max_staleness_s: float = 0.75
+    # Empty means all detector classes. YOLO11 COCO exposes 80 classes.
+    labels: tuple[str, ...] = ()
 
     @classmethod
     def from_env(cls) -> "ObjectTrackerConfig":
-        labels = tuple(
-            item.strip().lower()
-            for item in os.getenv(
-                "OBJECT_TRACKING_LABELS",
-                ",".join(DEFAULT_LABELS),
-            ).split(",")
-            if item.strip()
+        raw_labels = os.getenv("OBJECT_TRACKING_LABELS", "all").strip()
+        labels = (
+            ()
+            if raw_labels.lower() in {"", "all", "*"}
+            else tuple(
+                item.strip().lower()
+                for item in raw_labels.split(",")
+                if item.strip()
+            )
         )
         return cls(
             enabled=_env_bool("OBJECT_TRACKING_ENABLED", True),
-            model=os.getenv("OBJECT_TRACKING_MODEL", "yolo11n.pt"),
-            tracker=os.getenv("OBJECT_TRACKING_TRACKER", "botsort.yaml"),
+            model=os.getenv("OBJECT_TRACKING_MODEL", "yolo11s.pt"),
+            tracker=os.getenv(
+                "OBJECT_TRACKING_TRACKER",
+                DEFAULT_TRACKER_CONFIG,
+            ),
             device=os.getenv("OBJECT_TRACKING_DEVICE", "auto"),
-            fps=float(os.getenv("OBJECT_TRACKING_FPS", "5")),
-            confidence=float(os.getenv("OBJECT_TRACKING_CONFIDENCE", "0.25")),
+            fps=float(os.getenv("OBJECT_TRACKING_FPS", "8")),
+            confidence=float(os.getenv("OBJECT_TRACKING_CONFIDENCE", "0.15")),
             iou=float(os.getenv("OBJECT_TRACKING_IOU", "0.50")),
             image_size=int(os.getenv("OBJECT_TRACKING_IMAGE_SIZE", "640")),
             max_staleness_s=float(
-                os.getenv("OBJECT_TRACKING_MAX_STALENESS_S", "1.5")
+                os.getenv("OBJECT_TRACKING_MAX_STALENESS_S", "0.75")
             ),
             labels=labels,
         )
@@ -108,7 +98,9 @@ class ObjectTracker:
         self._thread: threading.Thread | None = None
         self._model = None
         self._class_ids: list[int] | None = None
+        self._device = self._resolve_device(self.config.device)
         self._tracks: dict[tuple[str, int], TrackObservation] = {}
+        self._label_history: dict[int, deque[str]] = {}
         self._last_submit = 0.0
         self._last_latency_s: float | None = None
         self._available = False
@@ -189,16 +181,22 @@ class ObjectTracker:
         if isinstance(names, list):
             names = dict(enumerate(names))
         allowed = set(self.config.labels)
-        self._class_ids = [
-            int(class_id)
-            for class_id, label in names.items()
-            if str(label).lower() in allowed
-        ]
+        self._class_ids = (
+            [
+                int(class_id)
+                for class_id, label in names.items()
+                if str(label).lower() in allowed
+            ]
+            if allowed
+            else None
+        )
         self._available = True
+        class_count = len(self._class_ids) if self._class_ids is not None else len(names)
         print(
             "[OBJECT TRACKER] ready: "
             f"{self.config.model} + {self.config.tracker}, "
-            f"{self.config.fps:g} FPS, {len(self._class_ids)} classes"
+            f"{self.config.fps:g} FPS, {class_count} classes, "
+            f"device={self._device or 'default'}"
         )
 
     def _run(self) -> None:
@@ -237,8 +235,8 @@ class ObjectTracker:
         }
         if self._class_ids:
             kwargs["classes"] = self._class_ids
-        if self.config.device.lower() != "auto":
-            kwargs["device"] = self.config.device
+        if self._device:
+            kwargs["device"] = self._device
 
         result = self._model.track(**kwargs)[0]
         boxes = result.boxes
@@ -257,8 +255,9 @@ class ObjectTracker:
         for index, (coords, class_id, confidence) in enumerate(
             zip(xyxy, class_ids, confidences)
         ):
-            label = str(names[int(class_id)]).lower()
+            detected_label = str(names[int(class_id)]).lower()
             track_id = int(raw_ids[index]) if raw_ids is not None else -(index + 1)
+            label = self._stable_label(track_id, detected_label)
             x1, y1, x2, y2 = coords
             normalized = (
                 max(0.0, min(1.0, x1 / width)),
@@ -268,7 +267,14 @@ class ObjectTracker:
             )
             key = (label, track_id)
             with self._lock:
-                previous = self._tracks.get(key)
+                previous = next(
+                    (
+                        item
+                        for item in self._tracks.values()
+                        if item.track_id == track_id
+                    ),
+                    None,
+                )
             first_seen = previous.first_seen if previous else timestamp
             seen_frames = previous.seen_frames + 1 if previous else 1
             updates[key] = TrackObservation(
@@ -283,6 +289,12 @@ class ObjectTracker:
             )
 
         with self._lock:
+            updated_ids = {track.track_id for track in updates.values()}
+            self._tracks = {
+                key: value
+                for key, value in self._tracks.items()
+                if value.track_id not in updated_ids
+            }
             self._tracks.update(updates)
         self._expire(timestamp)
 
@@ -294,6 +306,22 @@ class ObjectTracker:
                 for key, value in self._tracks.items()
                 if now - value.last_seen <= keep_for
             }
+            active_ids = {value.track_id for value in self._tracks.values()}
+        self._label_history = {
+            track_id: history
+            for track_id, history in self._label_history.items()
+            if track_id in active_ids
+        }
+
+    def _stable_label(self, track_id: int, detected_label: str) -> str:
+        if track_id < 0:
+            return detected_label
+        history = self._label_history.setdefault(
+            track_id,
+            deque(maxlen=8),
+        )
+        history.append(detected_label)
+        return Counter(history).most_common(1)[0][0]
 
     @staticmethod
     def _position(bbox: tuple[float, float, float, float]) -> str:
@@ -303,3 +331,18 @@ class ObjectTracker:
         horizontal = "left" if center_x < 1 / 3 else "right" if center_x > 2 / 3 else "center"
         vertical = "top" if center_y < 1 / 3 else "bottom" if center_y > 2 / 3 else "middle"
         return f"{horizontal}-{vertical}"
+
+    @staticmethod
+    def _resolve_device(configured: str) -> str | None:
+        if configured.lower() != "auto":
+            return configured
+        try:
+            import torch
+
+            if torch.backends.mps.is_available():
+                return "mps"
+            if torch.cuda.is_available():
+                return "cuda:0"
+        except Exception:
+            pass
+        return None
