@@ -61,6 +61,7 @@ def call_large_multiframe(
     question,
     frames,
     mode,
+    object_context="",
 ):
     if not frames:
         raise ValueError("No frames supplied.")
@@ -159,6 +160,13 @@ Give a short answer suitable for speaking aloud.
             "text": (
                 "User question:\n"
                 f"{question}"
+                + (
+                    "\n\nCurrent-frame auxiliary detector evidence "
+                    "(verify against the images):\n"
+                    f"{object_context}"
+                    if object_context
+                    else ""
+                )
             ),
         }
     )

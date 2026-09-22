@@ -94,6 +94,7 @@ def execute_temporal(
     visual_buffer,
     seconds=12.0,
     num_frames=4,
+    object_context="",
 ):
     start = time.perf_counter()
 
@@ -145,6 +146,7 @@ def execute_temporal(
         question=question,
         frames=frames,
         mode="TEMPORAL",
+        object_context=object_context,
     )
 
     e2e_latency = time.perf_counter() - start
@@ -176,6 +178,7 @@ def execute_memory(
     visual_buffer,
     seconds=15.0,
     num_frames=8,
+    object_context="",
 ):
     start = time.perf_counter()
 
@@ -208,6 +211,7 @@ def execute_memory(
         question=question,
         frames=frames,
         mode="MEMORY",
+        object_context=object_context,
     )
 
     e2e_latency = time.perf_counter() - start

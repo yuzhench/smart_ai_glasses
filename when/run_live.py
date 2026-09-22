@@ -16,8 +16,12 @@ import subprocess
 import sys
 import threading
 import time
+from pathlib import Path
 
 import os as _os
+from dotenv import load_dotenv
+
+load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 
 try:
     import cv2
@@ -558,6 +562,7 @@ def main(argv=None) -> int:
         print("\n中断")
     finally:
         slot.closed = True
+        routing_pipeline.close()
         for th in threads:
             th.join(timeout=2.0)
         if mic is not None:

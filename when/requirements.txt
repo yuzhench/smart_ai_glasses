@@ -8,6 +8,11 @@ pillow
 numpy
 opencv-python
 pyyaml
+openai
+python-dotenv
+joblib
+scikit-learn
+ultralytics
 
 # --- Audio: needed for live mode (run_live) only ---
 sounddevice                                  # microphone capture (PortAudio)

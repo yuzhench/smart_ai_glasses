@@ -8,6 +8,12 @@ from integration.final_executor import (
 from routing.high_level_router import (
     HighLevelRouter,
 )
+from routing.perception import (
+    ObjectEvidence,
+    ObjectEvidencePlanner,
+    ObjectTracker,
+    ObjectTrackerConfig,
+)
 from routing.short_term_memory import (
     RollingVisualBuffer,
 )
@@ -19,6 +25,7 @@ class RoutingPipeline:
         self,
         buffer_seconds=15.0,
         buffer_fps=2.0,
+        object_tracker_config=None,
     ):
         self.router = (
             HighLevelRouter()
@@ -30,6 +37,12 @@ class RoutingPipeline:
                     buffer_seconds,
             )
         )
+
+        self.object_tracker = ObjectTracker(
+            object_tracker_config
+            or ObjectTrackerConfig.from_env()
+        )
+        self.evidence_planner = ObjectEvidencePlanner()
 
         self.executor = (
             FinalExecutor(
@@ -71,6 +84,13 @@ class RoutingPipeline:
     ):
         now = time.time()
 
+        # Tracking has its own 1-slot queue and FPS limit, so this call never
+        # waits for object detection and runs before the 2 FPS memory throttle.
+        self.object_tracker.submit(
+            frame_rgb,
+            timestamp=now,
+        )
+
         with self._buffer_lock:
 
             if (
@@ -101,6 +121,14 @@ class RoutingPipeline:
         event,
         frame_rgb,
     ):
+        if self.object_tracker.available:
+            evidence = self.evidence_planner.plan(
+                event.query.text,
+                self.object_tracker.snapshot(),
+            )
+        else:
+            evidence = ObjectEvidence((), (), "")
+
         try:
             self.q.put_nowait(
                 (
@@ -108,6 +136,7 @@ class RoutingPipeline:
                     None
                     if frame_rgb is None
                     else frame_rgb.copy(),
+                    evidence,
                 )
             )
 
@@ -116,6 +145,9 @@ class RoutingPipeline:
                 "\n⚠ Routing queue full; "
                 "dropping trigger."
             )
+
+    def close(self):
+        self.object_tracker.close()
 
     def _print_decision(
         self,
@@ -165,7 +197,7 @@ class RoutingPipeline:
     def _worker(self):
         while True:
 
-            event, frame_rgb = (
+            event, frame_rgb, evidence = (
                 self.q.get()
             )
 
@@ -184,6 +216,7 @@ class RoutingPipeline:
                     self.executor.execute_proactive(
                         event,
                         frame_rgb,
+                        object_evidence=evidence,
                     )
                     continue
 
@@ -202,6 +235,7 @@ class RoutingPipeline:
                     decision,
                     event,
                     frame_rgb,
+                    object_evidence=evidence,
                 )
 
             except Exception as exc:

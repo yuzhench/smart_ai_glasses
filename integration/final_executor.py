@@ -130,6 +130,7 @@ class FinalExecutor:
     def _small(
         self,
         question,
+        object_context="",
     ):
         from routing.phone_bridge import ask_phone
 
@@ -137,6 +138,8 @@ class FinalExecutor:
             f"{question}\n"
             "Answer directly in one concise sentence."
         )
+        if object_context:
+            prompt += f"\n\n{object_context}"
 
         print("Backend : SMALL")
         print("Model   : Gemma E2B on Galaxy")
@@ -187,12 +190,15 @@ class FinalExecutor:
     def _large_visual(
         self,
         question,
+        object_context="",
     ):
         prompt = (
             f"{question}\n"
             "Answer directly in one concise sentence. "
             "Use the current wearable-camera image."
         )
+        if object_context:
+            prompt += f"\n\n{object_context}"
 
         print("Backend : LARGE")
         print("Model   :", LARGE_MODEL)
@@ -252,6 +258,7 @@ class FinalExecutor:
         self,
         question,
         frame_rgb,
+        object_context="",
     ):
         decision = (
             self.visual_router.route(
@@ -285,16 +292,19 @@ class FinalExecutor:
             == "LARGE"
         ):
             return self._large_visual(
-                question
+                question,
+                object_context=object_context,
             )
 
         return self._small(
-            question
+            question,
+            object_context=object_context,
         )
 
     def _temporal(
         self,
         question,
+        object_context="",
     ):
         print()
         print("TEMPORAL EXECUTION")
@@ -311,6 +321,7 @@ class FinalExecutor:
                 self.visual_buffer,
             seconds=12.0,
             num_frames=4,
+            object_context=object_context,
         )
 
         answer = result[
@@ -352,6 +363,7 @@ class FinalExecutor:
         self,
         question,
         frame_rgb,
+        object_context="",
     ):
         print()
         print("KNOWLEDGE EXECUTION")
@@ -368,6 +380,11 @@ class FinalExecutor:
                     "Give a short answer suitable "
                     "for speaking aloud.\n\n"
                     f"Question: {question}"
+                    + (
+                        f"\n\n{object_context}"
+                        if object_context
+                        else ""
+                    )
                 ),
             }
         ]
@@ -443,6 +460,7 @@ class FinalExecutor:
         self,
         event,
         frame_rgb,
+        object_evidence=None,
     ):
         kind = event.trigger_type.value
         description = str(
@@ -471,6 +489,8 @@ class FinalExecutor:
         print("Score   :", f"{event.score:.3f}")
         print("Threshold:", f"{event.threshold:.3f}")
         print("Answer  :", answer)
+        if object_evidence and object_evidence.prompt_context:
+            print("Objects :", object_evidence.prompt_context)
         print("-" * 68)
         print()
 
@@ -483,6 +503,7 @@ class FinalExecutor:
         decision,
         event,
         frame_rgb,
+        object_evidence=None,
     ):
         question = (
             event.query.text
@@ -490,6 +511,11 @@ class FinalExecutor:
 
         route = (
             decision.route
+        )
+        object_context = (
+            object_evidence.prompt_context
+            if object_evidence is not None
+            else ""
         )
 
         print()
@@ -505,13 +531,15 @@ class FinalExecutor:
                     self._direct_visual(
                         question,
                         frame_rgb,
+                        object_context=object_context,
                     )
                 )
 
             elif route == "TEMPORAL":
                 answer = (
                     self._temporal(
-                        question
+                        question,
+                        object_context=object_context,
                     )
                 )
 
@@ -520,6 +548,7 @@ class FinalExecutor:
                     self._knowledge(
                         question,
                         frame_rgb,
+                        object_context=object_context,
                     )
                 )
 

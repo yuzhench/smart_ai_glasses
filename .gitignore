@@ -27,6 +27,7 @@ routing/benchmarks/wearvqa_full/manifest.csv
 routing/benchmarks/results/*.jsonl
 routing/benchmarks/results/*_raw.csv
 routing/benchmarks/results/*_graded.csv
+!routing/benchmarks/results/wearvqa_luna_sol_image_aware_graded.csv
 benchmark/results/
 
 # macOS
@@ -68,6 +69,10 @@ routing/*.joblib
 
 # Logs
 routing/benchmarks/*.log
+
+# Ultralytics runtime artifacts and locally downloaded weights
+runs/
+*.pt
 
 # short-term routing runtime
 aria_live_frame.jpg
