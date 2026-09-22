@@ -38,6 +38,10 @@ python -m when.run_live --no-preset --negatives auto
 `yolo11s`，跟踪器使用移动相机补偿和外观 ReID；通过 `.env` 可以切回更快的
 `yolo11n.pt`。
 
+在 Apple Silicon 上，`OBJECT_TRACKING_DEVICE=auto` 会让 SigLIP 独占 MPS、YOLO 在
+CPU 后台运行，避免两个线程同时提交 Metal 推理导致进程中止。除非改为串行推理，否则
+不要手动把 tracker 设成 `mps`。
+
 完整架构图见 [`when/ARCHITECTURE.md`](when/ARCHITECTURE.md)，Luna 的 2500 条
 WearVQA 运行与评分记录见
 [`routing/benchmarks/wearvqa_luna_run_note.md`](routing/benchmarks/wearvqa_luna_run_note.md)。

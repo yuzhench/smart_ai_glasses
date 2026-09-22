@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import queue
+import sys
 import threading
 import time
 from collections import Counter, deque
@@ -336,11 +337,16 @@ class ObjectTracker:
     def _resolve_device(configured: str) -> str | None:
         if configured.lower() != "auto":
             return configured
+        if sys.platform == "darwin":
+            return "cpu"
         try:
             import torch
 
-            if torch.backends.mps.is_available():
-                return "mps"
+            # SigLIP already uses MPS in the vision thread. Running a second
+            # PyTorch/MPS model concurrently from the tracker thread can abort
+            # the whole process inside Metal command-buffer encoding. Keep the
+            # tracker on CPU by default on Apple Silicon; an explicit
+            # OBJECT_TRACKING_DEVICE=mps still overrides this choice.
             if torch.cuda.is_available():
                 return "cuda:0"
         except Exception:
