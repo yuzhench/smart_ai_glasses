@@ -14,6 +14,11 @@ benchmark/results/
 # macOS
 .DS_Store
 
+# Local secrets
+.env
+.env.*
+!.env.example
+
 # WearVQA downloaded data
 routing/benchmarks/wearvqa_full/images/
 routing/benchmarks/wearvqa_full/manifest.csv
