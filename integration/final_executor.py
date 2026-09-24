@@ -13,6 +13,10 @@ from routing.temporal_memory import execute_temporal
 from routing.visual_rescue_router import VisualRescueRouter
 from integration.audio_state import begin_tts, end_tts
 
+from integration.large_backend import (
+    create_large_backend,
+)
+
 
 OLD_PROJECT = (
     Path.home()
@@ -69,6 +73,10 @@ class FinalExecutor:
         )
 
         self._large_client = None
+
+        self.large_backend = (
+            create_large_backend()
+        )
 
     def _speak(
         self,
@@ -226,7 +234,8 @@ class FinalExecutor:
                         ],
                     }
                 ],
-                max_output_tokens=160,
+                reasoning={"effort": "low"},
+                max_output_tokens=512,
             )
         )
 
@@ -239,6 +248,15 @@ class FinalExecutor:
             response.output_text
             or ""
         ).strip()
+
+        if not answer:
+            print("Response status :", response.status)
+            print("Incomplete      :", response.incomplete_details)
+            print("Usage           :", response.usage)
+            print("Raw output      :", response.output)
+            raise RuntimeError(
+                "LARGE returned no visible output_text."
+            )
 
         print("Answer  :", answer)
         print(
@@ -355,22 +373,9 @@ class FinalExecutor:
     ):
         print()
         print("KNOWLEDGE EXECUTION")
-        print("Backend : WEB_SEARCH + LARGE")
-        print("Model   :", LARGE_MODEL)
+        print("Backend : WEB + LARGE")
 
-        content = [
-            {
-                "type": "input_text",
-                "text": (
-                    "You are answering a question "
-                    "from wearable AI glasses. "
-                    "Use web search when needed. "
-                    "Give a short answer suitable "
-                    "for speaking aloud.\n\n"
-                    f"Question: {question}"
-                ),
-            }
-        ]
+        image_path = None
 
         if frame_rgb is not None:
 
@@ -378,66 +383,63 @@ class FinalExecutor:
                 frame_rgb
             )
 
-            content.append(
-                {
-                    "type":
-                    "input_image",
-                    "image_url":
-                    image_to_data_url(
-                        FRAME_PATH
-                    ),
-                    "detail":
-                    "auto",
-                }
+            image_path = (
+                FRAME_PATH
             )
 
             print(
-                "Visual context: current Aria frame"
+                "Visual context: "
+                "current Aria frame"
             )
 
-        t0 = time.perf_counter()
-
-        response = (
-            self._client()
-            .responses.create(
-                model=LARGE_MODEL,
-                tools=[
-                    {
-                        "type":
-                        "web_search"
-                    }
-                ],
-                input=[
-                    {
-                        "role": "user",
-                        "content":
-                            content,
-                    }
-                ],
-                max_output_tokens=180,
+        result = (
+            self.large_backend
+            .answer_with_web(
+                question=question,
+                image_path=image_path,
             )
         )
 
-        latency = (
-            time.perf_counter()
-            - t0
+        print(
+            "Provider:",
+            result.provider,
         )
 
-        answer = (
-            response.output_text
-            or ""
-        ).strip()
+        print(
+            "Model   :",
+            result.model,
+        )
+
+        print(
+            "Web used:",
+            result.web_used,
+        )
+
+        print(
+            "Latency :",
+            f"{result.latency_s:.2f} s",
+        )
+
+        if result.sources:
+
+            print(
+                "Sources :"
+            )
+
+            for source in (
+                result.sources
+            ):
+                print(
+                    "  -",
+                    source,
+                )
 
         print(
             "Answer  :",
-            answer,
-        )
-        print(
-            "Latency :",
-            f"{latency:.2f} s",
+            result.answer,
         )
 
-        return answer
+        return result.answer
 
     def execute_proactive(
         self,
