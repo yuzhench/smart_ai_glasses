@@ -22,7 +22,7 @@ def initialize(graph):
     defaults = dict(character_metadata={}, observation_character_mappings={},
                     reference_character_mappings={}, identity_observations={},
                     reviewed_feature_support={}, retired_character_ids=[],
-                    identity_revision=0, identity_history=[], identity_dirty=False)
+                    identity_revision=0, identity_history=[], identity_dirty=False, temporal_handoff={})
     for key, value in defaults.items():
         if not hasattr(graph, key):
             setattr(graph, key, deepcopy(value))
@@ -85,9 +85,44 @@ def resolve_identity(graph, feature_id, *, observation_id=None, memory_reference
                 provenance=evidence or metadata)
 
 
-def canonicalize_contents(graph, contents, *, node_id=None, observation_id=None):
+def alias_occurrences(graph, text, clip_id):
+    """Trusted aliases are valid only in their executor-owned source window."""
+    matches = {}
+    if clip_id is None:
+        return []
+    for character, metadata in graph.character_metadata.items():
+        if character not in graph.character_mappings:
+            continue
+        for record in metadata.get('identity_aliases', []):
+            window = record['window']
+            if (window['session_id'] != getattr(graph, 'identity_session', None) or
+                    not window['previous_cutoff_clip'] < clip_id <= window['current_cutoff_clip']):
+                continue
+            phrase = record['phrase']
+            pattern = r'(?<!\w)(?:the\s+)?' + re.escape(phrase) + r'(?!\w)'
+            for match in re.finditer(pattern, text, re.IGNORECASE):
+                matches.setdefault(match.span(), []).append((character, metadata, record))
+    selected = []
+    for (start, end), candidates in sorted(matches.items(), key=lambda x: (-(x[0][1]-x[0][0]), x[0][0])):
+        if any(start < b and a < end for a, b, _ in selected):
+            continue
+        # Block shorter matches even when the longest phrase is ambiguous.
+        targets = {c for c, _, _ in candidates}
+        resolution = None
+        if len(targets) == 1:
+            character, metadata, record = candidates[0]
+            name = metadata.get('canonical_name')
+            resolution = dict(character_id=character, canonical_name=name,
+                              identity=name or character, source='window_alias', provenance=record)
+        selected.append((start, end, resolution))
+    return selected
+
+
+def canonicalize_contents(graph, contents, *, node_id=None, observation_id=None, clip_id=None):
     if not consolidated(graph):
         return list(contents), []
+    if node_id is not None:
+        clip_id = graph.nodes[node_id].metadata.get('timestamp')
     output, traces = [], []
     for index, text in enumerate(contents):
         spans = {(m.start(), m.end()): m.group(1) for m in FEATURE.finditer(text)}
@@ -108,7 +143,13 @@ def canonicalize_contents(graph, contents, *, node_id=None, observation_id=None)
             traces.append(dict(content_index=index, start=start, end=end,
                                original=text[start:end], **resolution))
             replacements.append((start, end, resolution['identity']))
-        for start, end, identity in reversed(replacements):
+        for start, end, resolution in alias_occurrences(graph, text, clip_id):
+            if resolution is None or any(start < b and a < end for a, b in spans):
+                continue
+            traces.append(dict(content_index=index, start=start, end=end,
+                               original=text[start:end], **resolution))
+            replacements.append((start, end, resolution['identity']))
+        for start, end, identity in sorted(replacements, reverse=True):
             text = text[:start] + identity + text[end:]
         output.append(text)
     return output, traces
@@ -161,11 +202,119 @@ def admit_observations(graph, feature, contents, first_index):
     rebuild_reverse(graph)
 
 
-def prepare_texts(graph, contents):
+def prepare_texts(graph, contents, *, clip_id=None):
     if (consolidated(graph) and graph.identity_dirty
             and not getattr(graph, 'identity_reindex_async', False)):
         reindex_text(graph)
-    return canonicalize_contents(graph, contents)[0]
+    return canonicalize_contents(graph, contents, clip_id=clip_id)[0]
+
+
+def rewrite_character_tokens(graph, replacements):
+    """Rewrite retired character tokens and keep occurrence offsets in sync."""
+    if not replacements:
+        return []
+    changed = []
+    references = {}
+    for node in graph.nodes.values():
+        contents = node.metadata.get('contents', [])
+        updated = []
+        offsets = {}
+        for index, content in enumerate(contents):
+            if not isinstance(content, str) or '<character_' not in content:
+                updated.append(content)
+                offsets[index] = []
+                continue
+            edits = [(match.start(), match.end(), '<' + replacements[match.group(1)] + '>')
+                     for match in FEATURE.finditer(content) if match.group(1) in replacements]
+            text = content
+            for start, end, replacement in reversed(edits):
+                text = text[:start] + replacement + text[end:]
+            updated.append(text)
+            offsets[index] = edits
+        if updated != contents:
+            node.metadata.setdefault('source_contents', deepcopy(contents))
+            node.metadata['contents'] = updated
+            changed.append(node.id)
+        for key, record in graph.reference_character_mappings.items():
+            if int(record['node_id']) != node.id:
+                continue
+            record = deepcopy(record)
+            edits = offsets[record['content_index']]
+            start, end = record['start'], record['end']
+            overlapping = [(a, b, replacement) for a, b, replacement in edits if a < end and start < b]
+            if overlapping and (len(overlapping) != 1 or overlapping[0][:2] != (start, end)):
+                raise ValueError('retired character token overlaps a memory reference')
+            shift_start = sum(len(replacement) - (b - a) for a, b, replacement in edits if b <= start)
+            shift_end = sum(len(replacement) - (b - a) for a, b, replacement in edits if b <= end)
+            record['start'] = start + shift_start
+            record['end'] = end + shift_end
+            if overlapping:
+                record['mention'] = overlapping[0][2]
+                record['end'] = record['start'] + len(record['mention'])
+            new_key = reference_key(node.id, record['content_index'], record['start'], record['end'])
+            if new_key in references and references[new_key] != record:
+                raise ValueError('rewritten memory references collide')
+            references[new_key] = record
+    graph.reference_character_mappings = references
+    return changed
+
+
+def prune_empty_characters(graph, *, protected=()):
+    """Retire shells without features or any live identity evidence."""
+    protected = set(protected)
+    tokens = {match.group(1) for node in graph.nodes.values()
+              for text in node.metadata.get('contents', [])
+              if isinstance(text, str) and '<character_' in text
+              for match in FEATURE.finditer(text)
+              if match.group(1).startswith('character_')}
+    used = (set(graph.observation_character_mappings.values()) |
+            {r['character_id'] for r in graph.reference_character_mappings.values()} |
+            {r.get('character_id') for r in graph.identity_observations.values()} |
+            {c for r in graph.reviewed_feature_support.values() for c, count in r.get('counts', {}).items() if count} |
+            {c for pair in getattr(graph, 'character_constraints', []) for c in pair} | tokens)
+    pruned = []
+    for character, features in list(graph.character_mappings.items()):
+        metadata = graph.character_metadata.get(character, {})
+        if (character in protected or features or character in used or
+                metadata.get('canonical_name') or metadata.get('aliases') or metadata.get('identity_aliases') or
+                metadata.get('name_evidence')):
+            continue
+        del graph.character_mappings[character]
+        graph.character_metadata.pop(character, None)
+        pruned.append(character)
+    graph.retired_character_ids = sorted(set(graph.retired_character_ids) | set(pruned))
+    return pruned
+
+
+def redirect_retired_characters(graph, replacements):
+    """Move all active identity references before removing retired IDs."""
+    if not replacements:
+        return []
+    for uid, character in list(graph.observation_character_mappings.items()):
+        graph.observation_character_mappings[uid] = replacements.get(character, character)
+    for record in graph.identity_observations.values():
+        if record.get('character_id') in replacements:
+            record['character_id'] = replacements[record['character_id']]
+    for record in graph.reference_character_mappings.values():
+        if record['character_id'] in replacements:
+            record['character_id'] = replacements[record['character_id']]
+    for support in graph.reviewed_feature_support.values():
+        counts = Counter()
+        for character, count in support.get('counts', {}).items():
+            counts[replacements.get(character, character)] += count
+        if 'counts' in support:
+            support['counts'] = dict(counts)
+    constraints = []
+    for left, right in getattr(graph, 'character_constraints', []):
+        left, right = replacements.get(left, left), replacements.get(right, right)
+        if left == right:
+            raise ValueError('retirement contradicts a cannot-link constraint')
+        pair = [left, right]
+        if pair not in constraints:
+            constraints.append(pair)
+    if hasattr(graph, 'character_constraints'):
+        graph.character_constraints = constraints
+    return rewrite_character_tokens(graph, replacements)
 
 
 def configured_embed(texts):
@@ -274,6 +423,7 @@ def apply_conclusions(graph, conclusions, observations, references, *, cutoff, p
         confidence = [o['confidence'] for o in supported if o.get('confidence') is not None]
         metadata = graph.character_metadata.setdefault(character, {'merged_character_ids': []})
         metadata.update(canonical_name=entity.get('canonical_name'), aliases=entity.get('aliases', []),
+            identity_aliases=deepcopy(entity.get('identity_aliases', metadata.get('identity_aliases', []))),
             name_evidence=deepcopy(entity.get('name_evidence', [])),
             confidence=min(confidence) if confidence else None,
             evidence_ids=sorted(set(entity.get('name_evidence', []) +
@@ -290,13 +440,15 @@ def apply_conclusions(graph, conclusions, observations, references, *, cutoff, p
         if len(targets) != 1:
             continue
         target = next(iter(targets))
-        # Existing occurrence assignments are redirected as part of the structural merge.
-        for record in graph.reference_character_mappings.values():
-            if record['character_id'] == character:
-                record['character_id'] = target
         lineage = [character] + graph.character_metadata.get(character, {}).get('merged_character_ids', [])
         graph.character_metadata[target]['merged_character_ids'] = sorted(set(
             graph.character_metadata[target]['merged_character_ids'] + lineage))
+        target_aliases = graph.character_metadata[target].setdefault('identity_aliases', [])
+        known_aliases = {r['alias_id'] for r in target_aliases}
+        for record in graph.character_metadata.get(character, {}).get('identity_aliases', []):
+            if record['alias_id'] not in known_aliases:
+                target_aliases.append(deepcopy(record))
+                known_aliases.add(record['alias_id'])
         retired[character] = target
         del graph.character_mappings[character]
         graph.character_metadata.pop(character, None)
@@ -327,11 +479,16 @@ def apply_conclusions(graph, conclusions, observations, references, *, cutoff, p
                 found += 1
         if not found:
             raise ValueError('reference mention/occurrence not present in source')
+    rewritten_node_ids = redirect_retired_characters(graph, retired)
+    pruned = prune_empty_characters(graph, protected=reserved)
     graph.identity_revision += 1
     graph.identity_cutoff = cutoff
     graph.identity_dirty = True
     rebuild_reverse(graph)
     report = dict(revision=graph.identity_revision, retired_characters=retired,
+                  pruned_characters=pruned, rewritten_node_ids=rewritten_node_ids,
+                  rewritten_text_node_ids=[n for n in rewritten_node_ids
+                                           if graph.nodes[n].type in ('episodic', 'semantic')],
                   conclusion_characters=selected, provenance=deepcopy(provenance))
     graph.identity_history.append(report)
     return report

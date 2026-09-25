@@ -1,0 +1,80 @@
+[
+ {
+  "id": "egolifeqa-a1-jake-63",
+  "question": "How long should the self-introduction and quiz session take approximately?\nA. 30min\nB. 50min\nC. 40min\nD. 60min\nAnswer with the option letter and its text.",
+  "answer": "C (40min)",
+  "ask_at_s": 244.05
+ },
+ {
+  "id": "egolifeqa-a1-jake-64",
+  "question": "What items are still not bought?\nA. Meat, fish, and tart crust\nB. Tomatoes, eggs, and tart crust\nC. Taro, mint, and tart crust\nD. Taro, pomegranate, and tart crust\nAnswer with the option letter and its text.",
+  "answer": "C (Taro, mint, and tart crust)",
+  "ask_at_s": 244.15
+ },
+ {
+  "id": "egolifeqa-a1-jake-65",
+  "question": "We decided to buy how many boxes of green grapes\nA. 2\nB. 3\nC. 1\nD. 4\nAnswer with the option letter and its text.",
+  "answer": "A (2)",
+  "ask_at_s": 244.15
+ },
+ {
+  "id": "egolifeqa-a1-jake-66",
+  "question": "Why do we want to buy sterile eggs\nA. Because sterile eggs are delicious\nB. Because everyone likes to eat sterile eggs\nC. Because sterile eggs are on promotion\nD. Because sterile eggs can be used to make tiramisu\nAnswer with the option letter and its text.",
+  "answer": "D (Because sterile eggs can be used to make tiramisu)",
+  "ask_at_s": 244.15
+ },
+ {
+  "id": "egolifeqa-a1-jake-67",
+  "question": "Why did the clerk not agree when we asked them to cut the pineapple?\nA. Because there were pre-cut ones available, so the clerk didn't agree\nB. Because the clerk didn't know how to cut it\nC. Because the clerk found it troublesome\nD. Because the fruit-cutting clerk was off duty at that time\nAnswer with the option letter and its text.",
+  "answer": "D (Because the fruit-cutting clerk was off duty at that time)",
+  "ask_at_s": 244.15
+ },
+ {
+  "id": "egolifeqa-a1-jake-68",
+  "question": "Why didn't we buy chestnut kernels\nA. Because they are hard to cook\nB. Because they are too expensive\nC. Because there is no need to buy them\nD. Because Tasha doesn't like to eat them\nAnswer with the option letter and its text.",
+  "answer": "A (Because they are hard to cook)",
+  "ask_at_s": 244.15
+ },
+ {
+  "id": "egolifeqa-a1-jake-69",
+  "question": "During group discussions, who usually speaks the least?\nA. Lucia\nB. Me\nC. Alice\nD. Tasha\nAnswer with the option letter and its text.",
+  "answer": "C (Alice)",
+  "ask_at_s": 244.15
+ },
+ {
+  "id": "egolifeqa-a1-jake-70",
+  "question": "Why do we need to buy two boxes of green grapes?\nA. Because one box can be used for making a cake, and the other can be eaten\nB. Because Lucia likes to eat them\nC. Because Katrina likes to eat them\nD. Because buying two boxes comes with a discount\nAnswer with the option letter and its text.",
+  "answer": "A (Because one box can be used for making a cake, and the other can be eaten)",
+  "ask_at_s": 244.15
+ },
+ {
+  "id": "egolifeqa-a1-jake-71",
+  "question": "What prize does Alice plan to give the participants\nA. Daffodil bulbs\nB. Sunflower\nC. Power bank\nD. Sunflower\nAnswer with the option letter and its text.",
+  "answer": "A (Daffodil bulbs)",
+  "ask_at_s": 244.15
+ },
+ {
+  "id": "egolifeqa-a1-jake-72",
+  "question": "What does Lucia plan to make on World Earth Day?\nA. Jellyfish lamp or cardboard puppy\nB. Lantern or cardboard puppy\nC. Greeting card or cardboard puppy\nD. Video or cardboard puppy\nAnswer with the option letter and its text.",
+  "answer": "A (Jellyfish lamp or cardboard puppy)",
+  "ask_at_s": 244.15
+ },
+ {
+  "id": "egolifeqa-a1-jake-73",
+  "question": "What materials does Tasha plan to use to make seed paper?\nA. Regular paper and sunflower seeds\nB. Paper made from discarded coffee grounds and sunflower seeds\nC. Paper made from discarded coffee grounds and sunflower seeds\nD. Regular paper and sunflower seeds\nAnswer with the option letter and its text.",
+  "answer": "C (Paper made from discarded coffee grounds and sunflower seeds)",
+  "ask_at_s": 244.15
+ },
+ {
+  "id": "egolifeqa-a1-jake-74",
+  "question": "Among us, who often goes out wearing slippers\nA. Me\nB. Tasha\nC. Lucia\nD. Alice\nAnswer with the option letter and its text.",
+  "answer": "A (Me)",
+  "ask_at_s": 244.15
+ },
+ {
+  "id": "egolifeqa-a1-jake-75",
+  "question": "Tasha is now saying she will wash the dishes, who washed the dishes last time\nA. Me\nB. Katrina\nC. Tasha\nD. Shure\nAnswer with the option letter and its text.",
+  "answer": "A (Me)",
+  "ask_at_s": 435.07
+ }
+]

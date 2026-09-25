@@ -1,8 +1,25 @@
 """Path 2 interface layer between ``consolidation`` and a pristine StreamMeCo tree.
 
 This package delivers all consolidation-adaptor behavior by monkey-patching
-the pristine StreamMeCo/M3-agent classes and modules at runtime; no file under
-``StreamMeCo/`` or ``consolidation/`` is modified.
+the pristine StreamMeCo/M3-agent classes and modules at runtime. No file under
+``StreamMeCo/`` or ``consolidation/`` is modified, with three deliberate
+exceptions:
+
+* ``mmagent/voice_processing.py`` had its eager ERes2NetV2 chain replaced by
+  the lazy CAM++ chain (CAM++ is the only speaker-embedding model), and its
+  ``diarize_audio`` uses the configured ``processing_config["asr_provider"]``
+  (deepgram) when set, falling back to a VLM named by
+  ``processing_config["diarization_model"]`` (default ``gemini-3.8-flash``,
+  replacing the hardcoded ``gemini-1.5-pro-002``);
+* ``mmagent/utils/chat_api.py`` default request timeout raised from 30 s to
+  120 s (30 s caused constant retry churn through slow proxies);
+* ``mmagent/utils/chat_qwen.py`` imports ``qwen_omni_utils`` lazily inside
+  ``get_response`` (the local-Qwen path), so importing the module no longer
+  requires that package;
+* ``mmagent/memory_processing_qwen.py`` accepts the singular
+  ``video_description`` key the prompt actually specifies (alongside the
+  plural the parser used to require) and retries/falls back on wrong-schema
+  responses instead of crashing with ``KeyError``.
 
 ``apply()`` (reader-side, CPU-safe):
 

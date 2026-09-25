@@ -1,0 +1,6 @@
+{
+  "dataset": "egolife_jake_day1_first20min",
+  "path": 1,
+  "memory_backend": "gemini-3.8-flash",
+  "output_dir": "bench/results/jake_path1_gemini_day1_first20min"
+}

@@ -3,13 +3,13 @@
 A run config is one JSON file selecting everything:
 
     {
-      "dataset": "egolife_jake",           // configs/datasets/<name>.json or a path
+      "dataset": "egolife_jake_20min",     // configs/datasets/<name>.json or a path
       "path": 2,                           // 1 = pristine online, 2 = + online consolidation
-      "memory_backend": "gemini-cloud",    // generation VLM, key into backends.json
-      "consolidation_backend": "gemini-cloud",  // path 2 only, key into backends.json
+      "memory_backend": "gemini-3.8-flash",   // generation VLM, key into backends.json
+      "consolidation_backend": "gpt-5.6-sol", // path 2 only, key into backends.json
       "period_s": 1200,                    // consolidation period (default 20 min)
-      "moss": false,                       // false | {"endpoint","media_root"} | local ckpt dict
-      "qa": {"questions": "...", "backend": "gemini-cloud", "topk": 10},
+      "moss": {"checkpoint": "...", "revision": "...", "repository": "..."},
+      "qa": {"questions": "...", "backend": "gemini-3.8-flash", "topk": 10},
       "output_dir": "results/my_run"
     }
 
@@ -66,6 +66,9 @@ def load_dataset(reference):
 
     Manifest: either {"clips": [{"path", "start_s", "end_s", "clip_id"?}, ...]}
     or {"clips_glob": "...", "clip_seconds": 10}. Optional "session", "source".
+    The manifest-level "source" is a human-readable provenance string; each
+    plan event instead carries the per-clip source dict ({path, start_s,
+    source_offset_s}) that consolidation evidence export requires.
     """
     path = Path(reference)
     if path.suffix != ".json":
@@ -80,12 +83,17 @@ def load_dataset(reference):
     clips = []
     if "clips" in manifest:
         for index, entry in enumerate(manifest["clips"]):
-            clips.append({
+            clip = {
                 "clip_id": int(entry.get("clip_id", index)),
                 "path": str(_abs(entry["path"])),
                 "start_s": float(entry["start_s"]),
                 "end_s": float(entry["end_s"]),
-            })
+            }
+            if "source_end_s" in entry:
+                clip["source_end_s"] = float(entry["source_end_s"])
+                if not clip["start_s"] < clip["source_end_s"] <= clip["end_s"]:
+                    raise ValueError("source_end_s must lie inside the clip interval")
+            clips.append(clip)
     else:
         if not manifest.get("clips_glob"):
             raise ValueError(f"{path}: supply 'clips' or 'clips_glob'")
@@ -101,11 +109,15 @@ def load_dataset(reference):
                 "end_s": (index + 1) * clip_seconds,
             })
     clips.sort(key=lambda c: c["clip_id"])
-    plan = [
-        {"clip_id": c["clip_id"], "start_s": c["start_s"], "end_s": c["end_s"],
-         "gap": None, "source": source}
-        for c in clips
-    ]
+    plan = []
+    for c in clips:
+        event = {"clip_id": c["clip_id"], "start_s": c["start_s"],
+                 "end_s": c["end_s"], "gap": None,
+                 "source": {"path": c["path"], "start_s": c["start_s"],
+                            "source_offset_s": 0.0}}
+        if "source_end_s" in c:
+            event["source_end_s"] = c["source_end_s"]
+        plan.append(event)
     return {"session": session, "source": source, "clips": clips, "plan": plan}
 
 
@@ -125,6 +137,9 @@ def load_run(run_path, backends_path=None, overrides=None):
         consolidation = resolve_backend(backends, name)
         if consolidation["type"] != "openai_compatible":
             raise ValueError("consolidation backend must be openai_compatible")
+        moss = _load_moss(raw.get("moss"))
+    else:
+        moss = None
     dataset = load_dataset(raw["dataset"])
     period_s = float(raw.get("period_s", 1200))
     if period_s <= 0:
@@ -136,10 +151,27 @@ def load_run(run_path, backends_path=None, overrides=None):
         "consolidation_backend": consolidation,
         "dataset": dataset,
         "period_s": period_s,
-        "moss": raw.get("moss", False),
+        "moss": moss,
         "qa": qa,
         "output_dir": str(_abs(raw.get("output_dir") or f"bench/results/{Path(run_path).stem}")),
     }
+
+
+def _load_moss(value):
+    """Path 2 must name one explicit, versioned MOSS window runner."""
+    if not isinstance(value, dict) or not value:
+        raise ValueError("path 2 requires a MOSS configuration; moss=false is unsupported")
+    if "endpoint" in value:
+        required = ("endpoint", "media_root", "revision")
+        if any(key in value for key in ("checkpoint", "repository")):
+            raise ValueError("MOSS endpoint and local checkpoint settings cannot be mixed")
+    else:
+        required = ("checkpoint", "revision", "repository")
+    missing = [key for key in required if not isinstance(value.get(key), str)
+               or not value[key].strip()]
+    if missing:
+        raise ValueError("MOSS configuration requires " + ", ".join(missing))
+    return dict(value)
 
 
 def _load_qa(qa_raw, backends, memory, memory_name):

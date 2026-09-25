@@ -94,8 +94,12 @@ def test_online_port_defers_until_public_barrier_and_reindexes(tmp_path):
     def propose(packet,work):
         calls.append(packet)
         return dict(patch,base_graph_version=packet['base_graph_version'])
+    def moss(window,start,directory):
+        return dict(session_id='s',start_s=start,cutoff_s=window['current_cutoff'],
+            timestamp_origin='session',run_id='test-window',segments=[
+                dict(start=start,end=start+1,speaker='S01',text='test speech')])
     runtime=attach_online(g,lambda snapshot:dict(replay=replay),tmp_path,
-        proposer=propose,moss=False,period_s=10,embed=lambda texts:[[0.,1.,0.] for _ in texts])
+        proposer=propose,moss=moss,period_s=10,embed=lambda texts:[[0.,1.,0.] for _ in texts])
     try:
         with runtime.segment(1,10):pass
         assert not calls

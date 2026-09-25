@@ -64,6 +64,7 @@ def _process_segment(
         id2faces,
         id2voices,
         clip_path,
+        video_graph=video_graph,
     )
     generated_memory = {
         "video_description": list(episodic_memories),
@@ -97,7 +98,7 @@ def _process_segment(
     batch_metrics = {"segment_id":clip_id}
     all_texts = effective_memory['video_description'] + effective_memory['high_level_conclusions']
     from mmagent.character_identity import prepare_texts
-    retrieval_texts = prepare_texts(video_graph, all_texts)
+    retrieval_texts = prepare_texts(video_graph, all_texts, clip_id=clip_id)
     all_vectors, _ = get_embeddings_batch('text-embedding-3-large', retrieval_texts, metrics=batch_metrics)
     split = len(effective_memory['video_description'])
     episodic_metrics = {}

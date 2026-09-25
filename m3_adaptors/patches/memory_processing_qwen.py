@@ -28,7 +28,7 @@ def process_memories(
     nodes_before = set(video_graph.nodes)
     edges_before = set(video_graph.edges)
     from .character_identity import prepare_texts, consolidated
-    retrieval_texts = prepare_texts(video_graph, memory_contents)
+    retrieval_texts = prepare_texts(video_graph, memory_contents, clip_id=clip_id)
     if precomputed_embeddings is None:
         embedding_started = time.perf_counter()
         embeddings = get_embeddings_batch(
@@ -108,6 +108,8 @@ def apply():
     import mmagent.memory_processing_qwen as module
     import mmagent.utils.chat_api as chat_api
 
+    from m3_adaptors.memory_construction import install
+    install(module)
     module.time = time
     module.get_embeddings_batch = chat_api.get_embeddings_batch
     module.process_memories = rebind(process_memories, module)

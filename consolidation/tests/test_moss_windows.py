@@ -169,7 +169,7 @@ def test_worker_moss_failure_and_mismatch_never_call_reasoner(tmp_path,monkeypat
     with pytest.raises(RuntimeError,match='MOSS unavailable'):
         worker(ConsolidationSnapshot(1,1,10,g))
     worker.moss=None
-    with pytest.raises(ValueError,match='configure a MOSS'):
+    with pytest.raises(ValueError,match='MOSS evidence is required'):
         worker(ConsolidationSnapshot(1,1,10,g))
     worker.moss=lambda *args:dict(session_id='s',start_s=1,cutoff_s=10,run_id='bad',segments=[])
     with pytest.raises(ValueError,match='window mismatch'):

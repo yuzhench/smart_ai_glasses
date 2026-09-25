@@ -1,0 +1,375 @@
+{
+  "session": "egolife_jake_day1_first30min",
+  "source": "EgoLife DAY1_A1_JAKE (egolifeqa-imu-benchmark); stream t0 = DAY1 day-start 11:09:42.08 wall clock",
+  "time_basis": "seconds since first clip start; clip ids are DAY1 wall-clock seconds since midnight",
+  "wall_clock_t0_s": 40182.08,
+  "clips": [
+    {
+      "clip_id": 40182,
+      "path": "/opt/streammeco/data/egolife_day1/DAY1_A1_JAKE_11094208.mp4",
+      "start_s": 0.0,
+      "end_s": 17.92,
+      "source_end_s": 17.63
+    },
+    {
+      "clip_id": 40200,
+      "path": "/opt/streammeco/data/egolife_day1/DAY1_A1_JAKE_11100000.mp4",
+      "start_s": 17.92,
+      "end_s": 47.92
+    },
+    {
+      "clip_id": 40230,
+      "path": "/opt/streammeco/data/egolife_day1/DAY1_A1_JAKE_11103000.mp4",
+      "start_s": 47.92,
+      "end_s": 77.92
+    },
+    {
+      "clip_id": 40260,
+      "path": "/opt/streammeco/data/egolife_day1/DAY1_A1_JAKE_11110000.mp4",
+      "start_s": 77.92,
+      "end_s": 107.92
+    },
+    {
+      "clip_id": 40290,
+      "path": "/opt/streammeco/data/egolife_day1/DAY1_A1_JAKE_11113000.mp4",
+      "start_s": 107.92,
+      "end_s": 137.92
+    },
+    {
+      "clip_id": 40320,
+      "path": "/opt/streammeco/data/egolife_day1/DAY1_A1_JAKE_11120000.mp4",
+      "start_s": 137.92,
+      "end_s": 167.92
+    },
+    {
+      "clip_id": 40350,
+      "path": "/opt/streammeco/data/egolife_day1/DAY1_A1_JAKE_11123000.mp4",
+      "start_s": 167.92,
+      "end_s": 197.92
+    },
+    {
+      "clip_id": 40380,
+      "path": "/opt/streammeco/data/egolife_day1/DAY1_A1_JAKE_11130000.mp4",
+      "start_s": 197.92,
+      "end_s": 227.92
+    },
+    {
+      "clip_id": 40410,
+      "path": "/opt/streammeco/data/egolife_day1/DAY1_A1_JAKE_11133000.mp4",
+      "start_s": 227.92,
+      "end_s": 257.92
+    },
+    {
+      "clip_id": 40440,
+      "path": "/opt/streammeco/data/egolife_day1/DAY1_A1_JAKE_11140000.mp4",
+      "start_s": 257.92,
+      "end_s": 287.92
+    },
+    {
+      "clip_id": 40470,
+      "path": "/opt/streammeco/data/egolife_day1/DAY1_A1_JAKE_11143000.mp4",
+      "start_s": 287.92,
+      "end_s": 317.92
+    },
+    {
+      "clip_id": 40500,
+      "path": "/opt/streammeco/data/egolife_day1/DAY1_A1_JAKE_11150000.mp4",
+      "start_s": 317.92,
+      "end_s": 347.92
+    },
+    {
+      "clip_id": 40530,
+      "path": "/opt/streammeco/data/egolife_day1/DAY1_A1_JAKE_11153000.mp4",
+      "start_s": 347.92,
+      "end_s": 377.92
+    },
+    {
+      "clip_id": 40560,
+      "path": "/opt/streammeco/data/egolife_day1/DAY1_A1_JAKE_11160000.mp4",
+      "start_s": 377.92,
+      "end_s": 407.92
+    },
+    {
+      "clip_id": 40590,
+      "path": "/opt/streammeco/data/egolife_day1/DAY1_A1_JAKE_11163000.mp4",
+      "start_s": 407.92,
+      "end_s": 437.92
+    },
+    {
+      "clip_id": 40620,
+      "path": "/opt/streammeco/data/egolife_day1/DAY1_A1_JAKE_11170000.mp4",
+      "start_s": 437.92,
+      "end_s": 467.92
+    },
+    {
+      "clip_id": 40650,
+      "path": "/opt/streammeco/data/egolife_day1/DAY1_A1_JAKE_11173000.mp4",
+      "start_s": 467.92,
+      "end_s": 497.92
+    },
+    {
+      "clip_id": 40680,
+      "path": "/opt/streammeco/data/egolife_day1/DAY1_A1_JAKE_11180000.mp4",
+      "start_s": 497.92,
+      "end_s": 527.92
+    },
+    {
+      "clip_id": 40710,
+      "path": "/opt/streammeco/data/egolife_day1/DAY1_A1_JAKE_11183000.mp4",
+      "start_s": 527.92,
+      "end_s": 557.92
+    },
+    {
+      "clip_id": 40740,
+      "path": "/opt/streammeco/data/egolife_day1/DAY1_A1_JAKE_11190000.mp4",
+      "start_s": 557.92,
+      "end_s": 587.92
+    },
+    {
+      "clip_id": 40770,
+      "path": "/opt/streammeco/data/egolife_day1/DAY1_A1_JAKE_11193000.mp4",
+      "start_s": 587.92,
+      "end_s": 617.92
+    },
+    {
+      "clip_id": 40800,
+      "path": "/opt/streammeco/data/egolife_day1/DAY1_A1_JAKE_11200000.mp4",
+      "start_s": 617.92,
+      "end_s": 647.92
+    },
+    {
+      "clip_id": 40830,
+      "path": "/opt/streammeco/data/egolife_day1/DAY1_A1_JAKE_11203000.mp4",
+      "start_s": 647.92,
+      "end_s": 677.92
+    },
+    {
+      "clip_id": 40860,
+      "path": "/opt/streammeco/data/egolife_day1/DAY1_A1_JAKE_11210000.mp4",
+      "start_s": 677.92,
+      "end_s": 707.92
+    },
+    {
+      "clip_id": 40890,
+      "path": "/opt/streammeco/data/egolife_day1/DAY1_A1_JAKE_11213000.mp4",
+      "start_s": 707.92,
+      "end_s": 737.92
+    },
+    {
+      "clip_id": 40920,
+      "path": "/opt/streammeco/data/egolife_day1/DAY1_A1_JAKE_11220000.mp4",
+      "start_s": 737.92,
+      "end_s": 767.92
+    },
+    {
+      "clip_id": 40950,
+      "path": "/opt/streammeco/data/egolife_day1/DAY1_A1_JAKE_11223000.mp4",
+      "start_s": 767.92,
+      "end_s": 797.92
+    },
+    {
+      "clip_id": 40980,
+      "path": "/opt/streammeco/data/egolife_day1/DAY1_A1_JAKE_11230000.mp4",
+      "start_s": 797.92,
+      "end_s": 827.92
+    },
+    {
+      "clip_id": 41010,
+      "path": "/opt/streammeco/data/egolife_day1/DAY1_A1_JAKE_11233000.mp4",
+      "start_s": 827.92,
+      "end_s": 857.92
+    },
+    {
+      "clip_id": 41040,
+      "path": "/opt/streammeco/data/egolife_day1/DAY1_A1_JAKE_11240000.mp4",
+      "start_s": 857.92,
+      "end_s": 887.92
+    },
+    {
+      "clip_id": 41070,
+      "path": "/opt/streammeco/data/egolife_day1/DAY1_A1_JAKE_11243000.mp4",
+      "start_s": 887.92,
+      "end_s": 917.92
+    },
+    {
+      "clip_id": 41100,
+      "path": "/opt/streammeco/data/egolife_day1/DAY1_A1_JAKE_11250000.mp4",
+      "start_s": 917.92,
+      "end_s": 947.92
+    },
+    {
+      "clip_id": 41130,
+      "path": "/opt/streammeco/data/egolife_day1/DAY1_A1_JAKE_11253000.mp4",
+      "start_s": 947.92,
+      "end_s": 977.92
+    },
+    {
+      "clip_id": 41160,
+      "path": "/opt/streammeco/data/egolife_day1/DAY1_A1_JAKE_11260000.mp4",
+      "start_s": 977.92,
+      "end_s": 1007.92
+    },
+    {
+      "clip_id": 41190,
+      "path": "/opt/streammeco/data/egolife_day1/DAY1_A1_JAKE_11263000.mp4",
+      "start_s": 1007.92,
+      "end_s": 1037.92
+    },
+    {
+      "clip_id": 41220,
+      "path": "/opt/streammeco/data/egolife_day1/DAY1_A1_JAKE_11270000.mp4",
+      "start_s": 1037.92,
+      "end_s": 1067.92
+    },
+    {
+      "clip_id": 41250,
+      "path": "/opt/streammeco/data/egolife_day1/DAY1_A1_JAKE_11273000.mp4",
+      "start_s": 1067.92,
+      "end_s": 1097.92
+    },
+    {
+      "clip_id": 41280,
+      "path": "/opt/streammeco/data/egolife_day1/DAY1_A1_JAKE_11280000.mp4",
+      "start_s": 1097.92,
+      "end_s": 1127.92
+    },
+    {
+      "clip_id": 41310,
+      "path": "/opt/streammeco/data/egolife_day1/DAY1_A1_JAKE_11283000.mp4",
+      "start_s": 1127.92,
+      "end_s": 1157.92
+    },
+    {
+      "clip_id": 41340,
+      "path": "/opt/streammeco/data/egolife_day1/DAY1_A1_JAKE_11290000.mp4",
+      "start_s": 1157.92,
+      "end_s": 1187.92
+    },
+    {
+      "clip_id": 41370,
+      "path": "/opt/streammeco/data/egolife_day1/DAY1_A1_JAKE_11293000.mp4",
+      "start_s": 1187.92,
+      "end_s": 1217.96
+    },
+    {
+      "clip_id": 41400,
+      "path": "/opt/streammeco/data/egolife_day1/DAY1_A1_JAKE_11300000.mp4",
+      "start_s": 1217.92,
+      "end_s": 1247.96
+    },
+    {
+      "clip_id": 41430,
+      "path": "/opt/streammeco/data/egolife_day1/DAY1_A1_JAKE_11303000.mp4",
+      "start_s": 1247.92,
+      "end_s": 1277.94
+    },
+    {
+      "clip_id": 41460,
+      "path": "/opt/streammeco/data/egolife_day1/DAY1_A1_JAKE_11310000.mp4",
+      "start_s": 1277.92,
+      "end_s": 1307.96
+    },
+    {
+      "clip_id": 41490,
+      "path": "/opt/streammeco/data/egolife_day1/DAY1_A1_JAKE_11313000.mp4",
+      "start_s": 1307.92,
+      "end_s": 1337.94
+    },
+    {
+      "clip_id": 41520,
+      "path": "/opt/streammeco/data/egolife_day1/DAY1_A1_JAKE_11320000.mp4",
+      "start_s": 1337.92,
+      "end_s": 1367.94
+    },
+    {
+      "clip_id": 41550,
+      "path": "/opt/streammeco/data/egolife_day1/DAY1_A1_JAKE_11323000.mp4",
+      "start_s": 1367.92,
+      "end_s": 1397.96
+    },
+    {
+      "clip_id": 41580,
+      "path": "/opt/streammeco/data/egolife_day1/DAY1_A1_JAKE_11330000.mp4",
+      "start_s": 1397.92,
+      "end_s": 1427.94
+    },
+    {
+      "clip_id": 41610,
+      "path": "/opt/streammeco/data/egolife_day1/DAY1_A1_JAKE_11333000.mp4",
+      "start_s": 1427.92,
+      "end_s": 1457.94
+    },
+    {
+      "clip_id": 41640,
+      "path": "/opt/streammeco/data/egolife_day1/DAY1_A1_JAKE_11340000.mp4",
+      "start_s": 1457.92,
+      "end_s": 1487.94
+    },
+    {
+      "clip_id": 41670,
+      "path": "/opt/streammeco/data/egolife_day1/DAY1_A1_JAKE_11343000.mp4",
+      "start_s": 1487.92,
+      "end_s": 1517.96
+    },
+    {
+      "clip_id": 41700,
+      "path": "/opt/streammeco/data/egolife_day1/DAY1_A1_JAKE_11350000.mp4",
+      "start_s": 1517.92,
+      "end_s": 1547.94
+    },
+    {
+      "clip_id": 41730,
+      "path": "/opt/streammeco/data/egolife_day1/DAY1_A1_JAKE_11353000.mp4",
+      "start_s": 1547.92,
+      "end_s": 1577.96
+    },
+    {
+      "clip_id": 41760,
+      "path": "/opt/streammeco/data/egolife_day1/DAY1_A1_JAKE_11360000.mp4",
+      "start_s": 1577.92,
+      "end_s": 1607.94
+    },
+    {
+      "clip_id": 41790,
+      "path": "/opt/streammeco/data/egolife_day1/DAY1_A1_JAKE_11363000.mp4",
+      "start_s": 1607.92,
+      "end_s": 1637.94
+    },
+    {
+      "clip_id": 41820,
+      "path": "/opt/streammeco/data/egolife_day1/DAY1_A1_JAKE_11370000.mp4",
+      "start_s": 1637.92,
+      "end_s": 1667.94
+    },
+    {
+      "clip_id": 41850,
+      "path": "/opt/streammeco/data/egolife_day1/DAY1_A1_JAKE_11373000.mp4",
+      "start_s": 1667.92,
+      "end_s": 1697.96
+    },
+    {
+      "clip_id": 41880,
+      "path": "/opt/streammeco/data/egolife_day1/DAY1_A1_JAKE_11380000.mp4",
+      "start_s": 1697.92,
+      "end_s": 1727.96
+    },
+    {
+      "clip_id": 41910,
+      "path": "/opt/streammeco/data/egolife_day1/DAY1_A1_JAKE_11383000.mp4",
+      "start_s": 1727.92,
+      "end_s": 1757.94
+    },
+    {
+      "clip_id": 41940,
+      "path": "/opt/streammeco/data/egolife_day1/DAY1_A1_JAKE_11390000.mp4",
+      "start_s": 1757.92,
+      "end_s": 1787.94
+    },
+    {
+      "clip_id": 41970,
+      "path": "/opt/streammeco/data/egolife_day1/DAY1_A1_JAKE_11393000.mp4",
+      "start_s": 1787.92,
+      "end_s": 1817.96
+    }
+  ]
+}

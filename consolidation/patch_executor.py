@@ -136,6 +136,42 @@ def execute(state, packet, patch, *, scope=None):
                         raise ValueError('existing name support must be revised before renaming')
                 entity.update(canonical_name=name, aliases=decision.get('aliases',[]), name_evidence=evidence_ids,
                               updated_at_consolidation=candidate['consolidation_index'])
+            elif op in ('assign_alias', 'revise_alias', 'remove_alias'):
+                entity = candidate['entities'].get(decision['entity_id'])
+                if entity is None:
+                    raise ValueError('unknown alias character')
+                records = entity.setdefault('identity_aliases', [])
+                provenance = dict(evidence_ids=evidence_ids, rationale=decision['rationale'],
+                                  decision_id=did, revision=candidate['consolidation_index'])
+                if op == 'assign_alias':
+                    phrase = decision['phrase'].strip()
+                    if not phrase or not any(phrase.casefold() in e.get('raw_text', '').casefold()
+                                             for e in evidence):
+                        raise ValueError('alias phrase lacks text evidence')
+                    previous_clip = packet.get('previous_cutoff_clip')
+                    if previous_clip is None:
+                        previous_clip = max([r['clip_id'] for r in packet['memories']
+                            if r['available_at'] <= packet['previous_cutoff']] + [-1])
+                    current_clip = packet.get('current_cutoff_clip')
+                    if current_clip is None:
+                        current_clip = max([r['clip_id'] for r in packet['memories']] + [previous_clip])
+                    window = dict(session_id=packet['session_id'],
+                        previous_cutoff=packet['previous_cutoff'], current_cutoff=packet['current_cutoff'],
+                        previous_cutoff_clip=previous_clip, current_cutoff_clip=current_clip)
+                    records.append(dict(alias_id=f"alias_{candidate['consolidation_index']}_{did}",
+                                        phrase=phrase, window=window, **provenance))
+                else:
+                    record = next((r for r in records if r['alias_id'] == decision['alias_id']), None)
+                    if record is None:
+                        raise ValueError('unknown alias record')
+                    records.remove(record)
+                    if op == 'revise_alias':
+                        target = candidate['entities'].get(decision['target_entity_id'])
+                        if target is None:
+                            raise ValueError('unknown alias target')
+                        record.setdefault('history', []).append({k: record[k] for k in provenance if k in record})
+                        record.update(provenance)
+                        target.setdefault('identity_aliases', []).append(record)
             elif op == 'resolve_reference':
                 mid = str(decision['memory_node_id'])
                 if mid not in memories or decision['entity_id'] not in candidate['entities']:
@@ -198,6 +234,14 @@ def execute(state, packet, patch, *, scope=None):
             if not isinstance(error, ValidationError):
                 raise
             rejected.append(dict(index=index, decision=decision, reason=error.message))
+    handoff = patch.get('temporal_handoff')
+    # The handoff is narrative background, independent of individual patch decisions.
+    # Partial decision rejection must not discard a valid current-window summary.
+    usable = isinstance(handoff, str) and len(handoff) <= 1800
+    result['temporal_handoff'] = dict(
+        summary=handoff.strip() if usable else '', session_id=packet['session_id'],
+        previous_cutoff=packet['previous_cutoff'], current_cutoff=packet['current_cutoff'],
+        revision=result['consolidation_index'])
     result['cutoff']=packet['current_cutoff']
     result['cutoff_clip'] = packet.get('current_cutoff_clip')
     result['decision_history'].append(dict(accepted=accepted,rejected=rejected,cutoff=result['cutoff']))

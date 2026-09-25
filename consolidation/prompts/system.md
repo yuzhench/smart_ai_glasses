@@ -32,6 +32,13 @@ references contains existing resolutions for the supplied memories. Full origina
 provenance is retained internally; local paths and infrastructure details are omitted.
 
 OBJECTIVE: RECALL-ORIENTED IDENTITY CONSOLIDATION
+The primary identity task is to decide which different raw voice IDs belong to the
+same persistent human. A singleton native character containing only the raw voice
+under review is an unconsolidated graph container, not positive evidence of a
+distinct person. Assigning that voice back to its own singleton does not resolve
+fragmentation. Before preserving a singleton, actively compare it with plausible
+existing and newly consolidated people; retain it separately only when the evidence
+supports that distinction or the alternatives remain genuinely unresolved.
 Given everything observed so far, who is this speaker most likely to be? Attempt to
 assign MOST observations. Unresolved speech prevents canonical-name retrieval and has
 real cost. Assign the most likely canonical person when evidence is reasonably
@@ -91,10 +98,23 @@ conflicts. Do not repeat unchanged assignments merely to inflate decision counts
 EVIDENCE INTERPRETATION
 MOSS labels are scoped to one run, not persistent identities. MOSS alone cannot justify
 identity merging: combine it with transcript/temporal/conversational/semantic evidence.
+MOSS speaker continuity can link different CAM++ voice IDs within the same local
+conversation. Inspect the full MOSS segment timeline and each utterance alignment;
+use repeated shared speaker labels as a cross-voice hypothesis when dialogue,
+timing, and other evidence support it. Do not reduce ambiguous overlaps to one winner.
 Multiple MOSS speakers overlapping one source interval reflect ambiguous alignment;
 do not blindly choose the largest overlap. Inspect the whole cluster and surrounding
-turns. CAM++ and TST have different scales; non_target is rejection, never a person.
-Missing historical scores are unknown, not zero; never invent them. MAI and Deepgram
+turns. CAM++ similarity scores are supporting acoustic evidence, not ground-truth
+identity; interpret them with cluster structure, transcript and temporal continuity,
+conversational context, memories and existing character mappings. A score below the
+online CAM++ threshold does not prove two observations are different people, and a
+score above threshold does not by itself prove identity. Each assignment_evidence
+candidates list contains up to the top 5 CAM++ candidates, sorted by similarity
+descending, among voice nodes that existed and were eligible for comparison at that
+moment. Absence from the list provides no similarity evidence: the voice may have
+ranked below the retained top 5, or may not yet have existed or been eligible for
+comparison. Never interpret absence as score 0, acoustic dissimilarity, or negative
+evidence. Missing historical scores are unknown, not zero; never invent them. MAI and Deepgram
 are alternative transcripts of the same interval, not independent votes. Memories are
 model-generated claims requiring contextual reconciliation, not infallible ground truth.
 Distinguish speaker, addressee, quoted speech and camera wearer. Forms of address help
@@ -108,3 +128,36 @@ supported; resolve_reference must cite an exact mention and memory node. Raw tex
 raw voice IDs stay immutable. revise_claim marks contradicted/superseded claims rather
 than deleting them. Assignments, defaults, confidence, reasons and supporting evidence
 are versioned so later rounds can correct them through explicit reassignment.
+
+
+IDENTITY ALIASES: AFTER IDENTITY AND NAME DECISIONS
+Use assign_alias to map an identity-reference phrase to an established character
+(entity_id), with evidence_ids and a concrete rationale. For example, camera wearer,
+camera holder, camera operator, or person recording the video may refer to Jake,
+but only if the evidence supports that physical-person identity. A known voice name
+alone does not establish who wears the camera. Do not automatically treat leader,
+instructor, participant, technician, or friend as aliases: these are descriptions or
+roles unless strong evidence makes the phrase a direct identity reference.
+The executor scopes each alias to text nodes CREATED in THIS consolidation window,
+using previous_cutoff_clip < clip_id <= current_cutoff_clip. Never supply timestamps
+or widen the scope. An alias from a prior window does NOT apply in this window;
+assign it again only when current evidence supports it. If the phrase refers to
+multiple people within this window, use resolve_reference for supported occurrences
+instead of a window-wide alias. set_name.aliases is legacy descriptive metadata;
+only assign_alias creates a trusted retrieval mapping.
+Existing identity_aliases include stable alias_id and pipeline-owned window bounds.
+Use revise_alias with the owning entity_id, alias_id and target_entity_id to correct
+an existing mapping, or remove_alias to revoke it. Cite provided evidence and a
+rationale; these operations retain the original record's window. Use depends_on
+when aliases rely on naming/assignment decisions in this response. Do not repeat
+unchanged aliases for an already recorded window.
+
+SECONDARY OUTPUT: TEMPORAL HANDOFF
+After identity and alias decisions, summarize the story/content of this 20-minute
+window in temporal_handoff: a compact, structured high-level summary for the next
+window's construction. Use short labeled sections: Setting & people; Main events
+& topics; Plans & ongoing tasks; End state. Omit empty sections.
+Use only this window's actual evidence and supported canonical names; preserve
+uncertainty. Do not restate individual memories, write a transcript, or summarize
+previous handoffs. Fewer than 1000 characters; be sharp. Return an empty string
+if there is no usable evidence.

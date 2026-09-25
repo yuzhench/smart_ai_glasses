@@ -2,13 +2,14 @@
 
 ``process_voices`` is lifted verbatim from the EDITED module; it carries the
 consolidation-required ``assign_voice`` provenance (``assignment_scores``,
-``source_row_index``, ``asr_provider``). ``apply()`` also swaps the pristine
-eager ERes2NetV2 speaker-embedding chain for the edited lazy CAM++ chain
-(``_get_embedding_model``/``get_embedding``/``generate``/``get_audio_embeddings``),
-so voice embeddings and ``assignment_scores`` come from CAM++ as in the edited
-tree. The pristine module's top-level torch checkpoint load means this patch
-can only apply where the full writer dependencies are installed;
-``apply_writer()`` guards that.
+``source_row_index``, ``asr_provider``). ``apply()`` rebinds the CAM++ lazy
+embedding chain (``_get_embedding_model``/``get_embedding``/``generate``/
+``get_audio_embeddings``) so voice embeddings and ``assignment_scores`` come
+from CAM++ — since the pristine module itself now uses the same CAM++-only
+lazy chain (ERes2NetV2 was removed upstream), the rebind mainly guarantees the
+edited ``process_voices`` semantics. The pristine module imports torch and
+speakerlab at module level, so this patch can only apply where the full
+writer dependencies are installed; ``apply_writer()`` guards that.
 """
 from m3_adaptors._shared import rebind
 

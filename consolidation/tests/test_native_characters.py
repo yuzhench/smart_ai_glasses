@@ -283,7 +283,7 @@ def test_reference_removal_and_new_character_monotonicity():
     assert new_id not in ids and new_id not in g.retired_character_ids
 
 
-def test_unrelated_characters_and_partial_legacy_character_are_preserved():
+def test_unrelated_empty_shell_is_pruned_but_partial_legacy_character_survives():
     g=graph()
     # A legacy character contains both a reviewed voice and an unreviewed face.
     g.character_mappings={'character_4':['voice_0','face_2'],'character_17':['voice_1'],
@@ -292,9 +292,71 @@ def test_unrelated_characters_and_partial_legacy_character_are_preserved():
     report=identity.apply_conclusions(g,{'a':{'canonical_name':'Alice'},'b':{'canonical_name':'Bob'}},
         [obs('u0','voice_0','b'),obs('u1','voice_0','b'),obs('u2','voice_1','a')],[],
         cutoff=10,provenance={})
-    assert g.character_mappings['character_31']==[]
+    assert 'character_31' not in g.character_mappings
+    assert 'character_31' in g.retired_character_ids
+    assert report['pruned_characters']==['character_31']
     assert g.resolve_identity('face_2')['character_id']=='character_4'
     assert not report['retired_characters']
+
+
+def test_retirement_rewrites_exact_historical_tokens_and_reference_offsets():
+    g = graph()
+    g.character_mappings = {'character_0': ['voice_0'],
+                            'character_123': ['voice_1'], 'character_2': ['face_2']}
+    identity.initialize(g)
+    g.nodes[1].metadata['contents'] = ['<character_123> audio transcript']
+    original_voice_embeddings = copy.deepcopy(g.nodes[1].embeddings)
+    content = '<character_123> meets <voice_0>'
+    g.nodes[3].metadata['contents'] = [content]
+    start = content.index('<voice_0>')
+    g.reference_character_mappings[identity.reference_key(3, 0, start, start + 9)] = dict(
+        node_id=3, content_index=0, start=start, end=start + 9,
+        mention='<voice_0>', character_id='character_123', evidence_ids=['e1'])
+    g.reviewed_feature_support['voice_1'] = {'total': 1, 'counts': {'character_123': 1}}
+    g.character_constraints = [['character_123', 'character_2']]
+    report = identity.apply_conclusions(g, {'a': {'canonical_name': 'Alice',
+                                                   'native_character_id': 'character_0'}},
+        [obs('u0', 'voice_0', 'a'), obs('u1', 'voice_1', 'a')], [], cutoff=10, provenance={})
+    assert report['retired_characters'] == {'character_123': 'character_0'}
+    assert report['rewritten_node_ids'] == [1, 3]
+    assert report['rewritten_text_node_ids'] == [3]
+    assert 'character_123' not in g.character_mappings
+    assert 'character_123' in g.retired_character_ids
+    assert g.nodes[3].metadata['contents'] == ['<character_0> meets <voice_0>']
+    assert g.nodes[1].metadata['contents'] == ['<character_0> audio transcript']
+    assert g.nodes[1].embeddings == original_voice_embeddings
+    reference = next(iter(g.reference_character_mappings.values()))
+    assert reference['character_id'] == 'character_0'
+    assert g.nodes[3].metadata['contents'][0][reference['start']:reference['end']] == '<voice_0>'
+    assert g.reviewed_feature_support['voice_1']['counts'] == {'character_0': 1}
+    assert g.character_constraints == [['character_0', 'character_2']]
+    assert all(0 <= end and end in g.nodes for edge in g.edges for end in edge)
+    assert set(g.nodes) == set(range(7))
+
+
+def test_retirement_rejects_collapsed_cannot_link_constraint():
+    g = graph()
+    g.character_constraints = [['character_0', 'character_1']]
+    with pytest.raises(ValueError, match='cannot-link'):
+        apply(g)
+
+
+def test_raw_character_rewrite_with_same_resolved_name_refreshes_trace_without_embedding():
+    g = graph()
+    identity.initialize(g)
+    g.identity_revision = 1
+    g.character_metadata['character_0'] = {'canonical_name': 'Alice', 'merged_character_ids': []}
+    g.character_metadata['character_1'] = {'canonical_name': 'Alice', 'merged_character_ids': []}
+    g.nodes[3].metadata['contents'] = ['<character_1> speaks']
+    g.reindex_identity_text(lambda texts: [[1., 0., 0.] for _ in texts])
+    identity.apply_conclusions(g, {'a': {'canonical_name': 'Alice',
+                                          'native_character_id': 'character_0'}},
+        [obs('u0', 'voice_0', 'a'), obs('u1', 'voice_1', 'a')], [], cutoff=10, provenance={})
+    assert g.nodes[3].metadata['contents'] == ['<character_0> speaks']
+    report = g.reindex_identity_text(lambda texts: pytest.fail('unchanged retrieval text was re-embedded'))
+    assert report['changed_node_ids'] == []
+    assert g.nodes[3].metadata['retrieval_contents'] == ['Alice speaks']
+    assert g.nodes[3].metadata['retrieval_identity_trace'][0]['original'] == '<character_0>'
 
 
 def test_later_prefix_keeps_new_native_nodes_and_previous_character_ids(tmp_path):

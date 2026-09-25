@@ -15,7 +15,6 @@ import json
 import logging
 import torch
 from transformers import Qwen2_5OmniProcessor, Qwen2_5OmniThinkerForConditionalGeneration, GenerationConfig
-from qwen_omni_utils import process_mm_info
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -49,6 +48,10 @@ def get_response(messages):
     generation_config = GenerationConfig(pad_token_id=151643, bos_token_id=151644, eos_token_id=151645)
     
     USE_AUDIO_IN_VIDEO = True
+    # Lazy import: only the local Qwen-Omni inference path needs this package;
+    # importing this module (e.g. for generate_messages with remote backends)
+    # must not require it.
+    from qwen_omni_utils import process_mm_info
     audios, images, videos = process_mm_info(messages, use_audio_in_video=USE_AUDIO_IN_VIDEO)
     inputs = processor(text=text, audio=audios, images=images, videos=videos, return_tensors="pt", padding=True, use_audio_in_video=USE_AUDIO_IN_VIDEO)
     inputs = inputs.to(thinker.device).to(thinker.dtype)
@@ -113,7 +116,7 @@ def generate_messages(inputs):
                     [
                         {
                             "type": "image",
-                            "image": f"data:image;base64,{img}",
+                            "image": f"data:image/{img_format};base64,{img}",
                         }
                         for img in input["content"]
                     ]
@@ -126,7 +129,7 @@ def generate_messages(inputs):
                     })
                     content.append({
                         "type": "image",
-                        "image": f"data:image;base64,{img[1]}"
+                        "image": f"data:image/{img_format};base64,{img[1]}"
                     })
         elif input["type"] in ["video_url", "video_base64/mp4", "video_base64/webm"]:
             content.append(

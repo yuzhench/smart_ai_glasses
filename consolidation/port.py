@@ -30,6 +30,8 @@ def attach_online(graph, evidence, directory, *, api_config=None, model=None,
             return propose_official(packet,work,api_config,model=model)
     if moss is None and moss_config is not None:
         moss=LocalWindowMoss(moss_config['checkpoint'],moss_config['revision'],moss_config['repository'])
+    if moss is None or moss is False:
+        raise ValueError('online consolidation requires an explicit MOSS window runner')
     timings={}
     def measured_evidence(snapshot):
         started=time.perf_counter();value=evidence(snapshot)

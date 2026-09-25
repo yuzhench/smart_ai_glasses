@@ -9,6 +9,7 @@ from copy import copy, deepcopy
 from dataclasses import dataclass
 import threading
 import pickle
+import re
 
 from .native import m3_module
 
@@ -17,7 +18,7 @@ IDENTITY_FIELDS = (
     'reference_character_mappings', 'identity_observations', 'reviewed_feature_support',
     'retired_character_ids', 'next_character_id', 'identity_revision', 'identity_history',
     'identity_cutoff', 'identity_cutoff_clip', 'identity_session',
-    'memory_claim_revisions', 'character_constraints',
+    'memory_claim_revisions', 'character_constraints', 'temporal_handoff',
 )
 
 
@@ -38,11 +39,26 @@ class ConsolidationPatch:
 def validate_patch(patch):
     """Expensive source integrity checks run on the worker, before commit."""
     base, result = patch.snapshot.graph, patch.graph
+    replacements = (result.identity_history[-1].get('retired_characters', {})
+                    if result.identity_history else {})
+    def rewritten(text):
+        if not isinstance(text, str):
+            return text
+        return re.sub(r'<(character_\d+)>',
+                      lambda match: '<' + replacements.get(match.group(1), match.group(1)) + '>', text)
     if set(base.nodes) != set(result.nodes) or base.edges != result.edges:
         raise ValueError('runtime patch may not edit nodes or edges')
     for key, node in base.nodes.items():
         other = result.nodes[key]
-        if (node.type != other.type or node.metadata != other.metadata
+        original = dict(node.metadata)
+        updated = dict(other.metadata)
+        old_contents = original.pop('contents', None)
+        new_contents = updated.pop('contents', None)
+        if 'source_contents' not in original and updated.get('source_contents') == old_contents:
+            updated.pop('source_contents')
+        expected = ([rewritten(text) for text in old_contents]
+                    if old_contents is not None else old_contents)
+        if (node.type != other.type or original != updated or new_contents != expected
                 or pickle.dumps(node.embeddings) != pickle.dumps(other.embeddings)):
             raise ValueError('runtime patch may only change native identity state')
     for record in getattr(result, 'reference_character_mappings', {}).values():
@@ -110,7 +126,14 @@ def reconcile(live, patch, *, committed_remap=None, remap_out=None):
     owners = {f: retired.get(c, c) for c, fs in live.character_mappings.items()
               for f in fs if f not in historical_features}
     owners.update({f: c for c, fs in after['character_mappings'].items() for f in fs})
-    chars = (set(live.character_mappings) | set(after['character_mappings'])) - set(retired)
+    dropped = set(base.character_mappings) - set(after['character_mappings']) - set(retired)
+    hot_refs = (set(live.observation_character_mappings.values()) |
+                {r['character_id'] for r in live.reference_character_mappings.values()} |
+                {r.get('character_id') for r in live.identity_observations.values()} |
+                {c for r in live.reviewed_feature_support.values() for c, n in r.get('counts', {}).items() if n} |
+                {c for pair in getattr(live, 'character_constraints', []) for c in pair})
+    prunable = {c for c in dropped if not live.character_mappings.get(c) and c not in hot_refs}
+    chars = (set(live.character_mappings) | set(after['character_mappings'])) - set(retired) - prunable
     staged.character_mappings = {c: [] for c in chars}
     for feature, owner in owners.items():
         staged.character_mappings[owner].append(feature)
@@ -126,7 +149,7 @@ def reconcile(live, patch, *, committed_remap=None, remap_out=None):
             if key not in before or value != before[key]:
                 target[key] = deepcopy(value)
         setattr(staged, field, target)
-    for old in retired:
+    for old in set(retired) | prunable:
         staged.character_metadata.pop(old, None)
     staged.observation_character_mappings = {
         k: retired.get(v, v) for k, v in staged.observation_character_mappings.items()}
@@ -134,6 +157,13 @@ def reconcile(live, patch, *, committed_remap=None, remap_out=None):
         for record in getattr(staged, field).values():
             if record.get('character_id') in retired:
                 record['character_id'] = retired[record['character_id']]
+    for support in staged.reviewed_feature_support.values():
+        counts = {}
+        for character, count in support.get('counts', {}).items():
+            target = retired.get(character, character)
+            counts[target] = counts.get(target, 0) + count
+        if 'counts' in support:
+            support['counts'] = counts
     # Appends to reviewed raw clusters invalidate completeness. Admit only new
     # observations using the existing strict >75% rule and retain minority votes.
     staged.identity_revision = after['identity_revision']
@@ -152,11 +182,50 @@ def reconcile(live, patch, *, committed_remap=None, remap_out=None):
                     staged.observation_character_mappings.pop(uid, None)
             identity.admit_observations(staged, feature, new_contents, old_count)
     for field in ('identity_revision', 'identity_history', 'identity_cutoff',
-                  'identity_cutoff_clip', 'identity_session', 'character_constraints'):
+                  'identity_cutoff_clip', 'identity_session', 'character_constraints', 'temporal_handoff'):
         if field in after:
             setattr(staged, field, after[field])
+    historical_constraints = {tuple(pair) for pair in getattr(base, 'character_constraints', [])}
+    for pair in getattr(live, 'character_constraints', []):
+        if tuple(pair) in historical_constraints:
+            continue
+        updated = [retired.get(character, character) for character in pair]
+        if updated[0] == updated[1]:
+            raise ValueError('hot cannot-link constraint conflicts with retirement')
+        if updated not in staged.character_constraints:
+            staged.character_constraints.append(updated)
     staged.retired_character_ids = sorted(set(live.retired_character_ids) | set(after['retired_character_ids']))
+    staged.retired_character_ids = [c for c in staged.retired_character_ids if c not in chars]
+    if staged.identity_history and dropped - prunable:
+        latest = staged.identity_history[-1]
+        latest['pruned_characters'] = [c for c in latest.get('pruned_characters', [])
+                                       if c in prunable]
     staged.next_character_id = next_id
+    changed_text = [key for key, node in base.nodes.items()
+                    if node.metadata.get('contents') != result.nodes[key].metadata.get('contents')]
+    if changed_text or remap:
+        staged.nodes = dict(live.nodes)
+        for key in changed_text:
+            staged.nodes[key] = deepcopy(live.nodes[key])
+            historical = deepcopy(result.nodes[key].metadata['contents'])
+            suffix = live.nodes[key].metadata['contents'][len(base.nodes[key].metadata['contents']):]
+            staged.nodes[key].metadata['contents'] = historical + deepcopy(suffix)
+            if 'source_contents' in result.nodes[key].metadata:
+                staged.nodes[key].metadata.setdefault('source_contents',
+                    deepcopy(result.nodes[key].metadata['source_contents']) + deepcopy(suffix))
+        if remap:
+            for key, node in list(staged.nodes.items()):
+                if any(
+                        '<' + old + '>' in text for old in remap
+                        for text in node.metadata.get('contents', []) if isinstance(text, str)):
+                    staged.nodes[key] = deepcopy(node)
+            identity.rewrite_character_tokens(staged, remap)
+    protected = (staged.identity_history[-1].get('conclusion_characters', {}).values()
+                 if staged.identity_history else ())
+    extra_pruned = identity.prune_empty_characters(staged, protected=protected)
+    if extra_pruned and staged.identity_history:
+        latest = staged.identity_history[-1]
+        latest['pruned_characters'] = sorted(set(latest.get('pruned_characters', [])) | set(extra_pruned))
     identity.rebuild_reverse(staged)
     for char in staged.observation_character_mappings.values():
         if char not in staged.character_mappings:
@@ -331,14 +400,21 @@ class ConsolidationRuntime:
                                             pending.cutoff_timestamp, rebased)
         # Validate all canonical texts before touching the live state.
         changed = []
-        for node in self.graph.nodes.values():
+        for node in staged.nodes.values():
             if node.type in ('semantic', 'episodic'):
                 text, _ = self.identity.canonicalize_contents(staged, node.metadata['contents'], node_id=node.id)
-                if text != node.metadata.get('retrieval_contents', node.metadata['contents']):
+                original = self.graph.nodes[node.id]
+                if text != original.metadata.get('retrieval_contents', original.metadata['contents']):
                     changed.append(node.id)
+        raw_text_changed = any(
+            node.type in ('semantic', 'episodic') and
+            node.metadata['contents'] != staged.nodes[node.id].metadata['contents']
+            for node in self.graph.nodes.values())
         fields = {f: getattr(staged, f) for f in IDENTITY_FIELDS if hasattr(staged, f)}
+        if staged.nodes is not self.graph.nodes:
+            fields['nodes'] = staged.nodes
         fields.update(reverse_character_mappings=staged.reverse_character_mappings,
-            entity_registry_version=staged.identity_revision, identity_dirty=bool(changed),
+            entity_registry_version=staged.identity_revision, identity_dirty=bool(changed or raw_text_changed),
             current_graph_version=self.graph.current_graph_version + 1,
             last_consolidated_clip_id=patch.snapshot.cutoff_clip_id,
             last_consolidated_timestamp=patch.snapshot.cutoff_timestamp)

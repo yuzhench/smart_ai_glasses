@@ -200,9 +200,8 @@ consolidation/.venv/bin/python -m consolidation moss \
 
 Normal live `run` calls can supply `--moss-endpoint` and `--media-root` to run MOSS
 inside consolidation, before reasoning. They derive the start from native identity
-state. `MOSS_ENDPOINT`, `MOSS_MEDIA_ROOT`, and optional `MOSS_REVISION` also configure
-the online worker. A model call without MOSS configuration or supplied window evidence
-fails; recorded-patch runs can still omit it.
+state. The online worker requires an explicit MOSS runner or supplied exact-window
+evidence; a model call without it fails. Recorded-patch runs can still omit MOSS.
 
 MOSS receives only the new audio interval, typically 0-20, 20-40, then 40-60 minutes,
 aligned to committed clips. The final interval can be shorter. Raw model timestamps

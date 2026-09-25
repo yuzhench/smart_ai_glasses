@@ -70,7 +70,7 @@ def process_memories(video_graph, memory_contents, clip_id, type='episodic'):
                     insert_memory(video_graph, memory, type)
     
     from .character_identity import prepare_texts
-    retrieval_texts = prepare_texts(video_graph, memory_contents)
+    retrieval_texts = prepare_texts(video_graph, memory_contents, clip_id=clip_id)
     memories_embeddings = get_memory_embeddings(retrieval_texts)
 
     memories = []

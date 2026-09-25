@@ -68,6 +68,7 @@ def proposal_state(graph, session, observations, source_version):
         metadata = graph.character_metadata.get(character, {})
         state['entities'][alias] = dict(native_character_id=character, voice_ids=[], utterance_ids=[],
             canonical_name=metadata.get('canonical_name'), aliases=metadata.get('aliases', []),
+            identity_aliases=deepcopy(metadata.get('identity_aliases', [])),
             name_evidence=metadata.get('name_evidence', metadata.get('evidence_ids', [])),
             created_at_consolidation=0, updated_at_consolidation=state['consolidation_index'])
     for observation in observations:
@@ -124,7 +125,9 @@ def project(graph, state, packet):
         evidence_cutoff_s=packet['current_cutoff'], reviewed_memory_ids=[m['memory_node_id'] for m in packet['memories']])
     relevant = set(state['assignments'].values()) | {r['entity_id'] for r in state['references'].values()}
     if state['decision_history']:
-        relevant.update(d['entity_id'] for d in state['decision_history'][-1]['accepted'] if d['op'] == 'set_name')
+        relevant.update(d['entity_id'] for d in state['decision_history'][-1]['accepted'] if d['op'] in ('set_name', 'assign_alias', 'revise_alias', 'remove_alias'))
+        relevant.update(d['target_entity_id'] for d in state['decision_history'][-1]['accepted']
+                        if d['op'] == 'revise_alias')
     conclusions = {key: value for key, value in state['entities'].items() if key in relevant}
     report = identity.apply_conclusions(graph, conclusions, observations,
         list(state['references'].values()), cutoff=packet['current_cutoff'], provenance=provenance)
@@ -133,9 +136,18 @@ def project(graph, state, packet):
         [o.get('clip_id', 0) for o in packet['observations']] +
         [m.get('clip_id', 0) for m in packet['memories']] + [0]))
     graph.memory_claim_revisions = deepcopy(state['claims'])
-    graph.character_constraints = [[report['conclusion_characters'].get(key,
-        state['entities'].get(key, {}).get('native_character_id', key)) for key in pair]
-        for pair in state['cannot_link']]
+    graph.temporal_handoff = deepcopy(state.get('temporal_handoff', {}))
+    constraints = []
+    for pair in state['cannot_link']:
+        resolved = [report['conclusion_characters'].get(key,
+            state['entities'].get(key, {}).get('native_character_id', key)) for key in pair]
+        resolved = [report['retired_characters'].get(key, key) for key in resolved]
+        if (resolved[0] == resolved[1] or
+                any(key not in graph.character_mappings for key in resolved)):
+            raise ValueError('character constraint targets a retired or conflicting identity')
+        if resolved not in constraints:
+            constraints.append(resolved)
+    graph.character_constraints = constraints
     return report
 
 

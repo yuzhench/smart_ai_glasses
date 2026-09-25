@@ -150,6 +150,15 @@ serve, e.g. via `vllm serve`). A run config picks `path` (1 or 2),
 `retrieve.answer_with_retrieval` on any configured backend). See
 `bench/README.md`.
 
+For any `openai_compatible` memory VLM, including one served locally with
+vLLM, the harness sends each clip as chronological, timestamped JPEG
+`image_url` parts. The default sample rate is 2 frames/s (`frame_fps` in the
+backend entry); the source decoder runs at 5 frames/s. Check that the serving
+model accepts multiple `image_url` parts and that its response usage includes
+image tokens. The in-process `local` Qwen backend retains its native video
+input path. See [Gemini's OpenAI-compatible image example](https://ai.google.dev/gemini-api/docs/openai#image_understanding)
+and [vLLM's multimodal server guide](https://docs.vllm.ai/en/latest/serving/online_serving/openai_compatible_server/).
+
 ## Known limitations
 
 - Face/VLM stage metrics in clip audits are `None` (all consolidation-consumed
@@ -175,12 +184,23 @@ worked around in code):
   VLM (`mmagent/utils/chat_qwen.py`) is loaded lazily at the first generation
   call — it reads `configs/processing_config.json` relative to the cwd *at
   that moment*. Running from the pristine root makes both resolve.
-- **Checkpoints.** Pristine `voice_processing.py` eager-loads
-  `models/pretrained_eres2netv2.ckpt` at import (must merely exist; it is
-  unused after the adaptor swaps in the CAM++ chain). Speaker embeddings
-  actually come from CAM++: `CAMPLUS_CHECKPOINT` env, else
+- **Checkpoints.** Speaker embeddings are CAM++ only: the pristine eager
+  ERes2NetV2 chain was removed from `voice_processing.py`, so no
+  `pretrained_eres2netv2.ckpt` is needed. CAM++ loads lazily from
+  `CAMPLUS_CHECKPOINT` env, else
   `processing_config["speaker_embedding_checkpoint"]`, else
   `models/camplus/campplus_cn_en_common.pt`.
+- **Other pristine edits.** Three small pristine deviations exist beyond
+  CAM++ (all documented in `RUNTIME_ERRORS.md`):
+  `voice_processing.diarize_audio` uses the configured
+  `processing_config["asr_provider"]` (MAI-Transcribe-2 via OpenRouter) when set, else falls back to
+  the VLM named by `processing_config["diarization_model"]` (default
+  `gemini-3.8-flash`) instead of a hardcoded `gemini-1.5-pro-002`;
+  `chat_api` default request timeout is 120 s (30 s caused constant retry
+  churn through slow proxies); `chat_qwen` imports `qwen_omni_utils` lazily (only the `qwen-local` backend
+  needs it installed); `memory_processing_qwen.generate_all_memories` accepts
+  the singular `video_description` key the prompt specifies and falls back to
+  empty memories on wrong-schema responses instead of crashing.
 - **Generation is pristine upstream**: with the `local` bench backend, memory
   generation uses the pristine in-process loader and
   `memory_processing_qwen` generate path, loading whatever checkpoint

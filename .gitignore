@@ -3,3 +3,11 @@ __pycache__/
 .pytest_cache/
 *.pyc
 .DS_Store
+
+# Local secrets / credentials
+njc_Hyperstack*.txt
+
+# Large local run artifacts (not for GitHub)
+bench/results/
+bench/archive/
+

@@ -17,11 +17,11 @@ class NativeConsolidationWorker:
     propose(packet, directory) is the existing configured Astra callable (or a
     saved-decision callable for tests). Execution is scoped to the compact packet.
     moss(replay, previous_cutoff, directory) runs before proposal. Alternatively,
-    supply exact-window MOSS in evidence, or configure MOSS_ENDPOINT/MOSS_MEDIA_ROOT.
+    supply exact-window MOSS in evidence.
     """
     def __init__(self, evidence, propose, directory, *, moss=None):
-        if moss is not None and moss is not False and not callable(moss):
-            raise ValueError('moss must be a window callable, None, or explicit False')
+        if moss is not None and not callable(moss):
+            raise ValueError('moss must be a window callable or supplied in evidence')
         self.evidence, self.propose = evidence, propose
         self.directory = Path(directory)
         self.moss = moss
@@ -49,15 +49,14 @@ class NativeConsolidationWorker:
             cutoff_clip_id=snapshot.cutoff_clip_id, cutoff_timestamp=snapshot.cutoff_timestamp))
         moss = inputs.get('moss')
         runner = self.moss
-        if moss is None and runner is None and os.environ.get('MOSS_ENDPOINT') and os.environ.get('MOSS_MEDIA_ROOT'):
-            from .moss_runner import WindowMoss
-            runner = WindowMoss(os.environ['MOSS_ENDPOINT'],os.environ['MOSS_MEDIA_ROOT'],
-                                revision=os.environ.get('MOSS_REVISION','server-unspecified'))
         if moss is None and runner:
             moss = runner(replay,state['cutoff'],directory/'moss')
-        if moss is None and self.moss is not False:
-            raise ValueError('configure a MOSS window runner or supply exact-window MOSS evidence; '
-                             'moss=False is reserved for explicit no-MOSS runs')
+        if moss is None:
+            raise ValueError('MOSS evidence is required before consolidation reasoning')
+        from .moss_alignment import validate_window
+        validate_window(moss, replay['session_id'], state['cutoff'], replay['current_cutoff'])
+        if not moss['segments'] and any(o['end_time'] > state['cutoff'] for o in replay['observations']):
+            raise ValueError('MOSS returned no segments for a window with speech observations')
         packet = build_evidence(replay, state, moss, inputs.get('assignments', ()))
         write(directory/'evidence.json', packet)
         from .prompt_packet import prepare_prompt

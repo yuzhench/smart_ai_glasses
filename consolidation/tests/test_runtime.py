@@ -6,7 +6,7 @@ import time
 import pytest
 
 from consolidation.native import m3_module
-from consolidation.runtime import ConsolidationRuntime, ConsolidationPatch, reconcile
+from consolidation.runtime import ConsolidationRuntime, ConsolidationPatch, ConsolidationSnapshot, reconcile, validate_patch
 
 identity = m3_module('mmagent.character_identity')
 VideoGraph = m3_module('mmagent.videograph').VideoGraph
@@ -90,6 +90,68 @@ def test_streaming_hot_retrieval_snapshot_and_inheritance():
         restored = pickle.loads(pickle.dumps(g))
         assert not hasattr(restored, '_consolidation_runtime')
         assert restored.resolve_identity('voice_' + str(hot))['identity'] == 'Katrina'
+    finally:
+        release.set(); r.close()
+
+
+def test_runtime_commits_exact_historical_character_rewrite_and_reindexes():
+    g = graph()
+    g.nodes[2].metadata['contents'] = ['<character_1> meets <voice_0>']
+    original_voice_embeddings = deepcopy(g.nodes[1].embeddings)
+    batches = []
+    def embed(texts):
+        batches.extend(texts)
+        return [[0., 1.] for _ in texts]
+    r = ConsolidationRuntime(g, merge, embed=embed)
+    try:
+        with r.segment(39, 1200): pass
+        wait(r)
+        assert not r.errors
+        assert 'character_1' not in g.character_mappings
+        assert g.nodes[2].metadata['contents'] == ['<character_0> meets <voice_0>']
+        assert g.nodes[2].metadata['retrieval_contents'] == ['Katrina meets Katrina']
+        assert 'Katrina meets Katrina' in batches
+        assert 'Rain falls' not in batches
+        assert g.nodes[1].embeddings == original_voice_embeddings
+        assert all(endpoint in g.nodes for edge in g.edges for endpoint in edge)
+    finally:
+        r.close()
+
+
+def test_runtime_rejects_unrelated_historical_text_edits():
+    g = graph()
+    snapshot = ConsolidationSnapshot(1, 39, 1200, deepcopy(g))
+    result = merge(snapshot).graph
+    result.nodes[4].metadata['contents'] = ['altered weather']
+    with pytest.raises(ValueError, match='only change native identity state'):
+        validate_patch(ConsolidationPatch(snapshot, result))
+
+
+def test_runtime_retains_pruned_shell_if_hot_feature_acquires_it():
+    g = graph()
+    g.character_mappings['character_31'] = []
+    identity.initialize(g)
+    entered, release = threading.Event(), threading.Event()
+    def worker(snapshot):
+        result = merge(snapshot)
+        entered.set(); assert release.wait(5)
+        return result
+    r = ConsolidationRuntime(g, worker, embed=lambda texts: [[0., 1.] for _ in texts])
+    try:
+        with r.segment(39, 1200): pass
+        assert entered.wait(2)
+        with r.segment(40, 1230):
+            hot = g.add_voice_node(dict(contents=['hot'], embeddings=[[1., 0.]]))
+            g.refresh_equivalences()
+            owner = g.reverse_character_mappings['voice_' + str(hot)]
+            g.character_mappings[owner].remove('voice_' + str(hot))
+            g.character_mappings['character_31'].append('voice_' + str(hot))
+            identity.rebuild_reverse(g)
+        release.set(); wait(r)
+        assert not r.errors
+        assert g.character_mappings['character_31'] == ['voice_' + str(hot)]
+        assert 'character_31' not in g.retired_character_ids
+        assert 'character_31' not in g.identity_history[-1]['pruned_characters']
     finally:
         release.set(); r.close()
 
@@ -218,8 +280,12 @@ def test_existing_native_application_adapter(tmp_path):
     from consolidation.tests.test_native_characters import graph as fixture_graph, publication_inputs
     g = fixture_graph()
     replay, _, _, patch = publication_inputs(g)
+    def moss(window,start,directory):
+        return dict(session_id='s',start_s=start,cutoff_s=window['current_cutoff'],
+                    timestamp_origin='session',run_id='test-window',segments=[
+                        dict(start=start,end=start+1,speaker='S01',text='test speech')])
     worker = NativeConsolidationWorker(lambda s: {'replay': replay},
-                                      lambda packet, path: patch, tmp_path, moss=False)
+                                      lambda packet, path: patch, tmp_path, moss=moss)
     r = ConsolidationRuntime(g, worker, period_s=10, embed=lambda texts: [[0., 1., 0.] for _ in texts])
     try:
         with r.segment(1, 10): pass

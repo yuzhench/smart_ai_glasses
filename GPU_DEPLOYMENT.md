@@ -3,7 +3,7 @@
 Deployment dependencies for `StreamMeCo-consolidation/` (Path 1: pristine
 StreamMeCo/M3 online memorization; Path 2: same run + online consolidation
 via `m3_adaptors`). Selectively distilled from the parent repo's
-`../docs/ARCHITECTURE.md` §2.1: voice embeddings are CAM++; ASR is Deepgram.
+`../docs/ARCHITECTURE.md` §2.1: voice embeddings are CAM++; the active ASR is MAI-Transcribe-2.
 
 ---
 
@@ -14,7 +14,7 @@ via `m3_adaptors`). Selectively distilled from the parent repo's
 | Stage | Model | On-disk location (relative to `StreamMeCo/`) | Runtime | Notes |
 | --- | --- | --- | --- | --- |
 | Memory-generation VLM | **Any VLM checkpoint you choose** — see §1.1.1 for the selection interface | Wherever you place it; the loader path comes from `configs/processing_config.json` key `ckpt` (only used by the `local` backend) | PyTorch + Transformers in-process, or an external OpenAI-compatible server (e.g. vLLM) | No checkpoint is required on disk if the run config selects a remote/`openai_compatible` backend |
-| Speaker embedding (voice identity) | **SpeakerLab CAM++** (`speech_campplus_sv_zh_en_16k-common_advanced`, revision `v1.0.0`) | `models/camplus/campplus_cn_en_common.pt` (SHA-256 `92f29b94e6948786a26778c9e302525d185bb08c8b9f5252ed98776902840199`) — override via `CAMPLUS_CHECKPOINT` env or `processing_config["speaker_embedding_checkpoint"]` | torch, lazy-loaded by the `m3_adaptors` voice patch | **192-D** voice embeddings. Requires the **3D-Speaker** repo (provides `speakerlab.models.campplus.DTDNN.CAMPPlus`). Note: pristine `voice_processing.py` still eager-loads `models/pretrained_eres2netv2.ckpt` **at import** — that file must merely exist on the writer box (it is unused once the adaptor swaps in the CAM++ chain) |
+| Speaker embedding (voice identity) | **SpeakerLab CAM++** (`speech_campplus_sv_zh_en_16k-common_advanced`, revision `v1.0.0`) | `models/camplus/campplus_cn_en_common.pt` (SHA-256 `92f29b94e6948786a26778c9e302525d185bb08c8b9f5252ed98776902840199`) — override via `CAMPLUS_CHECKPOINT` env or `processing_config["speaker_embedding_checkpoint"]` | torch, lazy-loaded on first voice segment | **192-D** voice embeddings. Requires the **3D-Speaker** repo (provides `speakerlab.models.campplus.DTDNN.CAMPPlus`). CAM++ is the **only** speaker-embedding chain — the pristine eager ERes2NetV2 load was removed from `mmagent/voice_processing.py`, so no ERes2NetV2 checkpoint is needed. |
 | Face detection + recognition | **InsightFace Buffalo-L** pack | `models/insightface/models/buffalo_l/` (`det_10g.onnx`, `w600k_r50.onnx`, `1k3d68.onnx`, `2d106det.onnx`, `genderage.onnx`) | ONNX Runtime GPU (`CUDAExecutionProvider`) | `FaceAnalysis(name="buffalo_l")`, RetinaFace detection + ArcFace recognition; embeddings stored on `img` nodes |
 
 #### 1.1.1 VLM/LLM backend interface (how a model is selected)
@@ -28,9 +28,15 @@ single registry; each entry is one of two types:
   "my-served-vlm": { "type": "openai_compatible",
                      "base_url": "http://gpu-box:8000/v1",
                      "model": "<model-id-as-served>",
-                     "api_key_env": "VLLM_API_KEY" }
+                     "api_key_env": "VLLM_API_KEY",
+                     "api_key": "<optional inline fallback key>" }
 }
 ```
+
+The env var named by `api_key_env` wins; the inline `api_key` is the
+fallback. The shipped registry (`bench/configs/backends.json`) routes
+`gemini-3.8-flash` (memory construction, both paths) and `gpt-5.6-sol`
+(Path-2 consolidation) through the 302.ai proxy.
 
 - **`local`** — the pristine in-process Transformers loader
   (`mmagent/utils/chat_qwen.py`). It loads whatever checkpoint
@@ -41,10 +47,9 @@ single registry; each entry is one of two types:
   installed for this mode.
 - **`openai_compatible`** — any chat-completions endpoint: a cloud API
   (Gemini/OpenAI-style) or a GPU checkpoint you serve yourself, e.g.
-  `vllm serve <hf-model-id> --port 8000`. `bench` converts the pipeline's
-  messages to OpenAI multimodal format, sending the clip as a base64
-  `video_url` data URI — confirm your endpoint accepts that part type
-  (vLLM does; some cloud providers do not).
+  `vllm serve <hf-model-id> --port 8000`. `bench` sends ordered, timestamped
+  JPEG `image_url` parts (default 2 frames/s) to both cloud and locally served
+  VLMs. Confirm the served model actually processes multiple images.
 
 A run config (`bench/configs/runs/*.json`) then picks backends by name:
 `memory_backend` (generation VLM, both paths) and `consolidation.backend`
@@ -60,11 +65,11 @@ python gpu_setup/download_models.py --root /opt/streammeco/run/StreamMeCo --only
 
 | Stage | Model | Provider key / env var | Used by |
 | --- | --- | --- | --- |
-| ASR + utterance timing | **Deepgram Nova-3** | alias `deepgram-asr` in `configs/api_config.json`; `DEEPGRAM_API_KEY` | `process_voices` per clip (both paths); produces timestamped transcript segments |
+| ASR + utterance timing | **MAI-Transcribe-2** | alias `openrouter-mai-transcribe-2` in `configs/api_config.json`; `OPENROUTER_API_KEY` | `process_voices` per clip (both paths); produces timestamped transcript segments |
 | Text embedding (native M3) | **`text-embedding-3-large`** (3072-D) | alias `text-embedding-3-large` in `configs/api_config.json`; any OpenAI-compatible endpoint | Episodic/semantic node embeddings at write time **and** query embeddings at retrieval/QA time — required by both paths, including pure-local-VLM runs |
-| Memory-generation VLM (cloud option) | e.g. Gemini (`gemini-2.5-pro`), or any OpenAI-compatible multimodal chat endpoint | `bench/configs/backends.json` entry; e.g. `GEMINI_API_KEY` | Path-1/Path-2 memory generation when `type != local`. Endpoint must accept base64 `video_url` parts (else serve the checkpoint via vLLM instead) |
+| Memory-generation VLM (cloud or served locally) | e.g. Gemini, or an image-capable checkpoint behind an OpenAI-compatible chat endpoint | `bench/configs/backends.json` entry | Path-1/Path-2 memory generation when `type != local`. Endpoint must process multiple JPEG `image_url` parts |
 | Consolidation LLM (Path 2 only) | Any OpenAI-compatible chat model (e.g. GPT-5.x, Gemini) | `bench` run config `consolidation.backend`; `CONSOLIDATION_API_KEY` (or the backend's `api_key_env`) | `consolidation.llm_consolidator.propose` at each 20-min boundary; runs outside the live mutation path |
-| Consolidation audio evidence (Path 2, optional) | **MOSS-Transcribe-Diarize** | `moss` field in bench run config: `false` (default), or `{"endpoint","media_root"}` for an inference server, or `{"checkpoint",...}` for a local ckpt | Per-window re-transcription evidence. Not required — set `"moss": false` |
+| Consolidation audio evidence (Path 2, required) | **MOSS-Transcribe-Diarize** | `moss` field in bench run config: `{"endpoint","media_root","revision"}` for an inference server, or `{"checkpoint","revision","repository"}` for a local checkpoint | Per-window re-transcription and speaker evidence; missing MOSS stops consolidation before the LLM call |
 
 Embedding spaces are **not interchangeable**: CAM++ 192-D (voice), Buffalo-L
 (face), `text-embedding-3-large` 3072-D (text) are three separate spaces.
@@ -117,18 +122,19 @@ PyTorch fallback; do not block setup on it.
 ## 3. Configuration & credentials
 
 ```bash
-export DEEPGRAM_API_KEY=...          # ASR (both paths)
-export OPENAI_API_KEY=...            # text-embedding-3-large endpoint (and GPT consolidation backend)
-export GEMINI_API_KEY=...            # only if a gemini bench backend is selected
-export CONSOLIDATION_API_KEY=...     # Path 2 consolidation LLM
+export OPENROUTER_API_KEY=...        # text-embedding-3-large via OpenRouter (required, both paths)
+export API_302_KEY=...               # 302.ai proxy: gemini-3.8-flash + gpt-5.6-sol (inline fallback keys exist in configs)
+export CONSOLIDATION_API_KEY=...     # only if a consolidation backend has no api_key_env/api_key of its own
 export VLLM_API_KEY=...              # only for a self-hosted vLLM VLM backend
 ```
 
-- `StreamMeCo/configs/api_config.json`: fill `base_url`/`api_key` for the
-  `text-embedding-3-large` alias and add the `deepgram-asr` alias
-  (`provider: deepgram`, `model: nova-3`, `base_url`, `capability: transcription`).
+- `StreamMeCo/configs/api_config.json`: ships with the live aliases —
+  `text-embedding-3-large` (OpenRouter, `openai/text-embedding-3-large`),
+  `gemini-3.8-flash` and `gpt-5.6-sol` (302.ai), and
+  `openrouter-mai-transcribe-2` (OpenRouter, `microsoft/mai-transcribe-2`).
 - `StreamMeCo/configs/processing_config.json`: `ckpt` → your local VLM
-  checkpoint path (only read by the `local` backend); `asr_provider: "deepgram-asr"`.
+  checkpoint path (only read by the `local` backend); `asr_provider:
+  "openrouter-mai-transcribe-2"` is already set.
 - `bench/configs/backends.json` + `bench/configs/runs/*.json`: select path
   (1 or 2), memory-generation backend, consolidation backend, `period_s` (1200).
 

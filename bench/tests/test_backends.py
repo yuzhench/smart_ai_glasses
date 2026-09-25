@@ -1,5 +1,4 @@
 """Offline tests for the bench harness: no GPU, torch, or real endpoints."""
-import base64
 import json
 import sys
 import threading
@@ -50,32 +49,38 @@ def _backend(server, **extra):
             "base_url": base_url, "model": "fake-model", **extra}
 
 
-def test_converter_text_image_video(tmp_path):
-    clip = tmp_path / "clip.mp4"
-    clip.write_bytes(b"video-bytes")
+def test_converter_text_image():
     messages = [{"role": "user", "content": [
         {"type": "text", "text": "describe"},
         {"type": "image", "image": "data:image;base64,AAAA"},
-        {"type": "video", "video": str(clip)},
     ]}]
     (converted,) = backends.to_openai_messages(messages)
-    text, image, video = converted["content"]
+    text, image = converted["content"]
     assert text == {"type": "text", "text": "describe"}
     assert image == {"type": "image_url",
                      "image_url": {"url": "data:image;base64,AAAA"}}
-    expected = "data:video/mp4;base64," + base64.b64encode(b"video-bytes").decode()
-    assert video == {"type": "video_url", "video_url": {"url": expected}}
 
 
-def test_converter_passthrough_urls_and_strings():
-    messages = [
-        {"role": "system", "content": "plain"},
-        {"role": "user", "content": [
-            {"type": "video", "video": "https://example.com/clip.mp4"}]},
-    ]
-    system, user = backends.to_openai_messages(messages)
-    assert system == {"role": "system", "content": "plain"}
-    assert user["content"][0]["video_url"]["url"] == "https://example.com/clip.mp4"
+def test_converter_rejects_video_part():
+    with pytest.raises(ValueError, match="timestamped image frames"):
+        backends.to_openai_messages([{"role": "user", "content": [
+            {"type": "video", "video": "data:video/mp4;base64,AAAA"}]}])
+
+
+def test_memory_frames_are_timestamped_and_image_urls():
+    frames = ["AAAA"] * 150
+    inputs = backends._frame_context(frames, source_fps=5, frame_fps=2)
+    assert len(inputs) == 1 + 2 * 60
+    assert inputs[1]["content"] == "Video frame at 00:00.0:"
+    assert inputs[-2]["content"] == "Video frame at 00:29.6:"
+    # The converter receives the same text/image shape as generate_messages.
+    messages = [{"role": "user", "content": [
+        {"type": "text", "text": item["content"]} if item["type"] == "text"
+        else {"type": "image", "image": "data:image/jpeg;base64," + item["content"][0]}
+        for item in inputs]}]
+    converted = backends.to_openai_messages(messages)
+    assert sum(part["type"] == "image_url" for part in converted[0]["content"]) == 60
+    assert not any(part["type"] == "video_url" for part in converted[0]["content"])
 
 
 def test_converter_rejects_unknown_part():
@@ -105,11 +110,26 @@ def test_chat_completion_request(server, monkeypatch):
     assert authorization == "Bearer secret"
 
 
+def test_chat_completion_inline_api_key_fallback(server, monkeypatch):
+    monkeypatch.delenv("BENCH_TEST_KEY", raising=False)
+    backend = _backend(server, api_key_env="BENCH_TEST_KEY", api_key="inline-secret")
+    backends.chat_completion(backend, [{"role": "user", "content": "hi"}])
+    assert server[1].captured[0][2] == "Bearer inline-secret"
+    monkeypatch.setenv("BENCH_TEST_KEY", "env-wins")
+    backends.chat_completion(backend, [{"role": "user", "content": "hi"}])
+    assert server[1].captured[1][2] == "Bearer env-wins"
+
+
 def _stub_mmagent(monkeypatch):
     chat_qwen = ModuleType("mmagent.utils.chat_qwen")
     chat_qwen.get_response = lambda messages: ("pristine", 0)
     mpq = ModuleType("mmagent.memory_processing_qwen")
     mpq.get_response = chat_qwen.get_response
+    mpq.processing_config = {"fps": 5}
+    mpq.generate_video_context = lambda frames, faces, voices, video, face_input: [
+        {"type": "video_base64/mp4", "content": video},
+        {"type": "text", "content": "Voice features:"},
+    ]
     for name in ("mmagent", "mmagent.utils"):
         package = ModuleType(name)
         package.__path__ = []
@@ -126,6 +146,13 @@ def test_apply_memory_backend_rebinds_both_modules(server, monkeypatch):
     assert mpq.get_response is get_response
     assert mpq.get_response([]) == ("ok", 7)
     assert server[1].captured[0][0] == "/v1/chat/completions"
+    context = mpq.generate_video_context(["AAAA"] * 5, {}, {}, "encoded-mp4")
+    assert context[0]["type"] == "text"
+    assert context[-1] == {"type": "text", "content": "Voice features:"}
+    assert sum(item["type"] == "images/jpeg" for item in context) == 2
+    backends.apply_memory_backend(_backend(server, frame_fps=1))
+    context = mpq.generate_video_context(["AAAA"] * 5, {}, {}, "encoded-mp4")
+    assert sum(item["type"] == "images/jpeg" for item in context) == 1
 
 
 def test_apply_memory_backend_local_is_noop(monkeypatch):
@@ -187,7 +214,7 @@ def test_run_config_path_validation(tmp_path):
     manifest.write_text(json.dumps({"clips": [
         {"path": "/tmp/a.mp4", "start_s": 0.0, "end_s": 10.0},
     ]}))
-    base = {"dataset": str(manifest), "memory_backend": "qwen-vllm"}
+    base = {"dataset": str(manifest), "memory_backend": "gemini-3.8-flash"}
 
     path2 = tmp_path / "path2.json"
     path2.write_text(json.dumps({**base, "path": 2}))
@@ -195,12 +222,18 @@ def test_run_config_path_validation(tmp_path):
         config.load_run(path2)
 
     path2.write_text(json.dumps(
-        {**base, "path": 2, "consolidation_backend": "gpt-consol"}))
+        {**base, "path": 2, "consolidation_backend": "gpt-5.6-sol"}))
+    with pytest.raises(ValueError, match="requires a MOSS"):
+        config.load_run(path2)
+    moss = {"checkpoint": "/models/moss", "repository": "/repos/moss", "revision": "pinned"}
+    path2.write_text(json.dumps(
+        {**base, "path": 2, "consolidation_backend": "gpt-5.6-sol", "moss": moss}))
     resolved = config.load_run(path2)
     assert resolved["path"] == 2
     assert resolved["period_s"] == 1200
     assert resolved["dataset"]["clips"][0]["end_s"] == 10.0
     assert resolved["dataset"]["plan"][0]["gap"] is None
+    assert resolved["moss"] == moss
 
     bad = tmp_path / "bad.json"
     bad.write_text(json.dumps({**base, "path": 3}))
@@ -220,9 +253,9 @@ def test_run_config_overrides(tmp_path):
     ]}))
     run = tmp_path / "run.json"
     run.write_text(json.dumps(
-        {"dataset": str(manifest), "path": 1, "memory_backend": "qwen-vllm"}))
-    resolved = config.load_run(run, overrides={"memory_backend": "gemini-cloud"})
-    assert resolved["memory_backend"]["name"] == "gemini-cloud"
+        {"dataset": str(manifest), "path": 1, "memory_backend": "gemini-3.8-flash"}))
+    resolved = config.load_run(run, overrides={"memory_backend": "gpt-5.6-sol"})
+    assert resolved["memory_backend"]["name"] == "gpt-5.6-sol"
 
 
 def test_qa_questions_validation_and_order():

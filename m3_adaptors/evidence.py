@@ -33,23 +33,19 @@ def export_consolidation_evidence(snapshot, directory, session, plan):
             break
         clip_id = event["clip_id"]
         source = event.get("source")
-        segments.append(
-            {
-                "segment_id": clip_id,
-                "absolute_start_seconds": event["start_s"],
-                "absolute_end_seconds": event["end_s"],
-                "gap": event["gap"],
-                "source": source["path"] if source else None,
-                "start_seconds_in_source": (
-                    event["start_s"]
-                    - source["start_s"]
-                    + source.get("source_offset_s", 0)
-                    if source
-                    else 0
-                ),
-            }
-        )
+        segment = {
+            "segment_id": clip_id,
+            "absolute_start_seconds": event["start_s"],
+            "absolute_end_seconds": event["end_s"],
+            "gap": event["gap"],
+            "source": source["path"] if source else None,
+            "start_seconds_in_source": (
+                event["start_s"] - source["start_s"] + source.get("source_offset_s", 0)
+                if source else 0
+            ),
+        }
         if event["gap"]:
+            segments.append(segment)
             gaps.append(
                 {
                     "clip_id": clip_id,
@@ -59,6 +55,17 @@ def export_consolidation_evidence(snapshot, directory, session, plan):
                 }
             )
             continue
+        source_end = event.get("source_end_s", event["end_s"])
+        if not event["start_s"] < source_end <= event["end_s"]:
+            raise ValueError("source_end_s must lie inside the committed clip")
+        if source_end < event["end_s"]:
+            segments.append(dict(segment, absolute_end_seconds=source_end))
+            segments.append(dict(segment, absolute_start_seconds=source_end,
+                                 gap="source_gap", source=None, start_seconds_in_source=0))
+            gaps.append(dict(clip_id=clip_id, reason="source_gap",
+                             start_s=source_end, end_s=event["end_s"]))
+        else:
+            segments.append(segment)
         audit_path = directory / "audits" / f"clip_{clip_id}_audit.json"
         audit = json.loads(audit_path.read_text())
         for row in audit["voice_observations"]:

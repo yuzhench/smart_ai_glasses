@@ -1,8 +1,242 @@
 [
-  {
-    "id": "q1",
-    "question": "What is the main activity in the video so far?",
-    "answer": null,
-    "ask_at_s": 1200.0
-  }
+ {
+  "id": "egolifeqa-a1-jake-63",
+  "question": "How long should the self-introduction and quiz session take approximately?\nA. 30min\nB. 50min\nC. 40min\nD. 60min\nAnswer with the option letter and its text.",
+  "answer": "C (40min)",
+  "ask_at_s": 244.05
+ },
+ {
+  "id": "egolifeqa-a1-jake-64",
+  "question": "What items are still not bought?\nA. Meat, fish, and tart crust\nB. Tomatoes, eggs, and tart crust\nC. Taro, mint, and tart crust\nD. Taro, pomegranate, and tart crust\nAnswer with the option letter and its text.",
+  "answer": "C (Taro, mint, and tart crust)",
+  "ask_at_s": 244.15
+ },
+ {
+  "id": "egolifeqa-a1-jake-65",
+  "question": "We decided to buy how many boxes of green grapes\nA. 2\nB. 3\nC. 1\nD. 4\nAnswer with the option letter and its text.",
+  "answer": "A (2)",
+  "ask_at_s": 244.15
+ },
+ {
+  "id": "egolifeqa-a1-jake-66",
+  "question": "Why do we want to buy sterile eggs\nA. Because sterile eggs are delicious\nB. Because everyone likes to eat sterile eggs\nC. Because sterile eggs are on promotion\nD. Because sterile eggs can be used to make tiramisu\nAnswer with the option letter and its text.",
+  "answer": "D (Because sterile eggs can be used to make tiramisu)",
+  "ask_at_s": 244.15
+ },
+ {
+  "id": "egolifeqa-a1-jake-67",
+  "question": "Why did the clerk not agree when we asked them to cut the pineapple?\nA. Because there were pre-cut ones available, so the clerk didn't agree\nB. Because the clerk didn't know how to cut it\nC. Because the clerk found it troublesome\nD. Because the fruit-cutting clerk was off duty at that time\nAnswer with the option letter and its text.",
+  "answer": "D (Because the fruit-cutting clerk was off duty at that time)",
+  "ask_at_s": 244.15
+ },
+ {
+  "id": "egolifeqa-a1-jake-68",
+  "question": "Why didn't we buy chestnut kernels\nA. Because they are hard to cook\nB. Because they are too expensive\nC. Because there is no need to buy them\nD. Because Tasha doesn't like to eat them\nAnswer with the option letter and its text.",
+  "answer": "A (Because they are hard to cook)",
+  "ask_at_s": 244.15
+ },
+ {
+  "id": "egolifeqa-a1-jake-69",
+  "question": "During group discussions, who usually speaks the least?\nA. Lucia\nB. Me\nC. Alice\nD. Tasha\nAnswer with the option letter and its text.",
+  "answer": "C (Alice)",
+  "ask_at_s": 244.15
+ },
+ {
+  "id": "egolifeqa-a1-jake-70",
+  "question": "Why do we need to buy two boxes of green grapes?\nA. Because one box can be used for making a cake, and the other can be eaten\nB. Because Lucia likes to eat them\nC. Because Katrina likes to eat them\nD. Because buying two boxes comes with a discount\nAnswer with the option letter and its text.",
+  "answer": "A (Because one box can be used for making a cake, and the other can be eaten)",
+  "ask_at_s": 244.15
+ },
+ {
+  "id": "egolifeqa-a1-jake-71",
+  "question": "What prize does Alice plan to give the participants\nA. Daffodil bulbs\nB. Sunflower\nC. Power bank\nD. Sunflower\nAnswer with the option letter and its text.",
+  "answer": "A (Daffodil bulbs)",
+  "ask_at_s": 244.15
+ },
+ {
+  "id": "egolifeqa-a1-jake-72",
+  "question": "What does Lucia plan to make on World Earth Day?\nA. Jellyfish lamp or cardboard puppy\nB. Lantern or cardboard puppy\nC. Greeting card or cardboard puppy\nD. Video or cardboard puppy\nAnswer with the option letter and its text.",
+  "answer": "A (Jellyfish lamp or cardboard puppy)",
+  "ask_at_s": 244.15
+ },
+ {
+  "id": "egolifeqa-a1-jake-73",
+  "question": "What materials does Tasha plan to use to make seed paper?\nA. Regular paper and sunflower seeds\nB. Paper made from discarded coffee grounds and sunflower seeds\nC. Paper made from discarded coffee grounds and sunflower seeds\nD. Regular paper and sunflower seeds\nAnswer with the option letter and its text.",
+  "answer": "C (Paper made from discarded coffee grounds and sunflower seeds)",
+  "ask_at_s": 244.15
+ },
+ {
+  "id": "egolifeqa-a1-jake-74",
+  "question": "Among us, who often goes out wearing slippers\nA. Me\nB. Tasha\nC. Lucia\nD. Alice\nAnswer with the option letter and its text.",
+  "answer": "A (Me)",
+  "ask_at_s": 244.15
+ },
+ {
+  "id": "egolifeqa-a1-jake-75",
+  "question": "Tasha is now saying she will wash the dishes, who washed the dishes last time\nA. Me\nB. Katrina\nC. Tasha\nD. Shure\nAnswer with the option letter and its text.",
+  "answer": "A (Me)",
+  "ask_at_s": 435.07
+ },
+ {
+  "id": "egolifeqa-a1-jake-76",
+  "question": "What am I usually doing on the second floor today?\nA. Too hungry, waiting too bored, playing on the phone to divert attention to prevent hunger\nB. Playing on the phone, slacking off, and resting\nC. Using the computer to handle my various information\nD. Using the computer to play online games\nAnswer with the option letter and its text.",
+  "answer": "C (Using the computer to handle my various information)",
+  "ask_at_s": 2920.09
+ },
+ {
+  "id": "egolifeqa-a1-jake-77",
+  "question": "Who helps Alice look after the ring\nA. Me\nB. Katrina\nC. Shure\nD. Tasha\nAnswer with the option letter and its text.",
+  "answer": "A (Me)",
+  "ask_at_s": 3670.09
+ },
+ {
+  "id": "egolifeqa-a1-jake-78",
+  "question": "Who helped Alice take off the bracelet\nA. Me\nB. Tasha\nC. Katrina\nD. Lucia\nAnswer with the option letter and its text.",
+  "answer": "B (Tasha)",
+  "ask_at_s": 3670.09
+ },
+ {
+  "id": "egolifeqa-a1-jake-79",
+  "question": "Previously, Alice couldn't open the can. Who helped Alice open the can?\nA. Lucia\nB. Me\nC. Katrina\nD. Tasha\nAnswer with the option letter and its text.",
+  "answer": "B (Me)",
+  "ask_at_s": 3670.09
+ },
+ {
+  "id": "egolifeqa-a1-jake-80",
+  "question": "Who used the kitchen knife on the counter last time?\nA. Lucia\nB. Alice\nC. Tasha\nD. Katrina\nAnswer with the option letter and its text.",
+  "answer": "B (Alice)",
+  "ask_at_s": 6801.1
+ },
+ {
+  "id": "egolifeqa-a1-jake-81",
+  "question": "Who came to visit my room at noon\nA. Tasha, Alice, Shure\nB. Katrina, Shure, Alice\nC. Tasha, Katrina, Lucia\nD. Katrina, Lucia, Shure\nAnswer with the option letter and its text.",
+  "answer": "D (Katrina, Lucia, Shure)",
+  "ask_at_s": 7086.05
+ },
+ {
+  "id": "egolifeqa-a1-jake-82",
+  "question": "When I usually buy clothes, what type of clothing do I not purchase?\nA. Similar to Hainan Home men's clothing\nB. Hip-hop trendy men's clothing\nC. Similar to vacation wear casual clothing\nD. Similar to Semir's artistic men's clothing\nAnswer with the option letter and its text.",
+  "answer": "A (Similar to Hainan Home men's clothing)",
+  "ask_at_s": 7223.19
+ },
+ {
+  "id": "egolifeqa-a1-jake-83",
+  "question": "when Tasha and Alice and I were buying fruit at the supermarket, who was mainly responsible for selecting the fruit\nA. We selected the fruit together\nB. Tasha, me\nC. Tasha, Alice\nD. Alice, me\nAnswer with the option letter and its text.",
+  "answer": "C (Tasha, Alice)",
+  "ask_at_s": 7223.19
+ },
+ {
+  "id": "egolifeqa-a1-jake-84",
+  "question": "Who discussed sterile eggs with me while shopping at the supermarket\nA. Shure, Alice\nB. Tasha, Alice\nC. Tasha, Katrina\nD. Tasha, Shure\nAnswer with the option letter and its text.",
+  "answer": "B (Tasha, Alice)",
+  "ask_at_s": 7223.19
+ },
+ {
+  "id": "egolifeqa-a1-jake-85",
+  "question": "Who usually frequents the vegetable market\nA. Alice\nB. Tasha\nC. Me\nD. Shure\nAnswer with the option letter and its text.",
+  "answer": "B (Tasha)",
+  "ask_at_s": 7223.19
+ },
+ {
+  "id": "egolifeqa-a1-jake-86",
+  "question": "What do I always do when I go to the supermarket\nA. Hum songs\nB. Watch videos on my phone\nC. Read novels on my phone\nD. Play games on my phone\nAnswer with the option letter and its text.",
+  "answer": "B (Watch videos on my phone)",
+  "ask_at_s": 7223.19
+ },
+ {
+  "id": "egolifeqa-a1-jake-87",
+  "question": "what beverages i rarely drink\nA. alcohol\nB. coffee\nC. juice\nD. milk\nAnswer with the option letter and its text.",
+  "answer": "B (coffee)",
+  "ask_at_s": 7223.19
+ },
+ {
+  "id": "egolifeqa-a1-jake-88",
+  "question": "When shopping at the supermarket on day1, who did I lose track of and took a long time to find?\nA. Tasha, Alice\nB. Shure, Alice\nC. Shure, Tasha\nD. Katrina, Tasha\nAnswer with the option letter and its text.",
+  "answer": "A (Tasha, Alice)",
+  "ask_at_s": 7223.19
+ },
+ {
+  "id": "egolifeqa-a1-jake-89",
+  "question": "What drinks do I usually not buy when shopping at the supermarket?\nA. Milk\nB. Juice\nC. Alcohol and coffee\nD. Soda water\nAnswer with the option letter and its text.",
+  "answer": "C (Alcohol and coffee)",
+  "ask_at_s": 7223.19
+ },
+ {
+  "id": "egolifeqa-a1-jake-90",
+  "question": "where is the place I will never go to\nA. market\nB. library\nC. bar\nD. gym\nAnswer with the option letter and its text.",
+  "answer": "A (market)",
+  "ask_at_s": 7223.19
+ },
+ {
+  "id": "egolifeqa-a1-jake-91",
+  "question": "Who is always the first to get off the car\nA. Alice\nB. Me\nC. Lucia\nD. Tasha\nAnswer with the option letter and its text.",
+  "answer": "B (Me)",
+  "ask_at_s": 7223.19
+ },
+ {
+  "id": "egolifeqa-a1-jake-92",
+  "question": "What do I usually use to control the computer when I use it?\nA. Mouse\nB. Touchpad\nC. Graphics tablet\nD. Touchscreen\nAnswer with the option letter and its text.",
+  "answer": "B (Touchpad)",
+  "ask_at_s": 7223.19
+ },
+ {
+  "id": "egolifeqa-a1-jake-93",
+  "question": "when Tasha and Alice and I entered the supermarket first, who were we waiting for\nA. Shure, Nicous, Choiszt\nB. Shure, Katrina, Jack\nC. Katrina, Shure, Nicous\nD. Katrina, Shure, Lucia\nAnswer with the option letter and its text.",
+  "answer": "D (Katrina, Shure, Lucia)",
+  "ask_at_s": 7223.19
+ },
+ {
+  "id": "egolifeqa-a1-jake-94",
+  "question": "Whose hometown is close to mine\nA. Alice\nB. Shure\nC. Katrina\nD. Tasha\nAnswer with the option letter and its text.",
+  "answer": "D (Tasha)",
+  "ask_at_s": 7223.19
+ },
+ {
+  "id": "egolifeqa-a1-jake-95",
+  "question": "What cuisine are we going to make on the last day?\nA. Cake\nB. Hot pot\nC. Rice noodles\nD. Turkey\nAnswer with the option letter and its text.",
+  "answer": "A (Cake)",
+  "ask_at_s": 7223.19
+ },
+ {
+  "id": "egolifeqa-a1-jake-96",
+  "question": "Who took the group photo today?\nA. Me\nB. Katrina\nC. Lucia\nD. Tasha\nAnswer with the option letter and its text.",
+  "answer": "A (Me)",
+  "ask_at_s": 7324.18
+ },
+ {
+  "id": "egolifeqa-a1-jake-97",
+  "question": "What does Alice not eat?\nA. Noodles\nB. Bread\nC. Cream\nD. Pizza\nAnswer with the option letter and its text.",
+  "answer": "C (Cream)",
+  "ask_at_s": 7372.16
+ },
+ {
+  "id": "egolifeqa-a1-jake-98",
+  "question": "Who usually writes the shopping list on the whiteboard?\nA. Lucia\nB. Katrina\nC. Shure\nD. Tasha\nAnswer with the option letter and its text.",
+  "answer": "B (Katrina)",
+  "ask_at_s": 7631.04
+ },
+ {
+  "id": "egolifeqa-a1-jake-99",
+  "question": "Who helped Tasha spread cream on the cake?\nA. Lucia, Katrina, Alice\nB. Lucia, Shure, Alice\nC. Me, Lucia, Shure\nD. Lucia, Shure, Katrina\nAnswer with the option letter and its text.",
+  "answer": "A (Lucia, Katrina, Alice)",
+  "ask_at_s": 7680.17
+ },
+ {
+  "id": "egolifeqa-a1-jake-100",
+  "question": "when I was eating the cake, I accidentally dropped the strawberry on the ground. Who helped me pick it up and throw it in the trash can?\nA. Tasha\nB. Alice\nC. Katrina\nD. Shure\nAnswer with the option letter and its text.",
+  "answer": "A (Tasha)",
+  "ask_at_s": 7980.17
+ },
+ {
+  "id": "egolifeqa-a1-jake-101",
+  "question": "What should I buy tomorrow\nA. phone case\nB. watch\nC. phone\nD. clock\nAnswer with the option letter and its text.",
+  "answer": "D (clock)",
+  "ask_at_s": 7980.17
+ },
+ {
+  "id": "egolifeqa-a1-jake-102",
+  "question": "In the morning, while we were chatting and discussing by the table on the first floor, what replaced the tripod?\nA. Chair\nB. Little Horse Chair\nC. Little Bench\nD. No replacement\nAnswer with the option letter and its text.",
+  "answer": "B (Little Horse Chair)",
+  "ask_at_s": 8516.18
+ }
 ]

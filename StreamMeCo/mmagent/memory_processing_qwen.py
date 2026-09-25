@@ -152,13 +152,28 @@ def generate_all_memories(video_context, model_type="sft"):
     messages = generate_messages(input)
     epi_key = "video_descriptions"
     sem_key = "high_level_conclusions"
-    
+    # The prompt (prompt_generate_memory_with_ids_sft) specifies singular keys
+    # ("video_description"); accept both spellings, and treat any other schema
+    # like an unparseable response (retry, then fall back to empty memories).
+    key_variants = {
+        epi_key: (epi_key, "video_description"),
+        sem_key: (sem_key, "high_level_conclusion"),
+    }
+
     memories = None
     for i in range(MAX_RETRIES):
         memories_string = get_response(messages)[0]
         if not memories_string:
             memories_string = "[]"
-        memories = validate_and_fix_json(memories_string)
+        parsed = validate_and_fix_json(memories_string)
+        if isinstance(parsed, dict):
+            memories = {}
+            for canonical, variants in key_variants.items():
+                value = next((parsed[v] for v in variants if v in parsed), None)
+                if value is None:
+                    memories = None
+                    break
+                memories[canonical] = value
         if memories is not None:
             break
     if memories is None:

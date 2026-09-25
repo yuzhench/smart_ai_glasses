@@ -120,10 +120,9 @@ No default API call is silently enabled. The deployment explicitly supplies its
 existing evidence collector and configured proposal callable; tests use saved or
 deterministic decisions. Runtime objects/locks/executors are excluded from pickles.
 Native identity and watermarks persist; attach a new runtime after loading a checkpoint.
-Instead of passing `WindowMoss`, set `MOSS_ENDPOINT`, `MOSS_MEDIA_ROOT`, and optional
-`MOSS_REVISION`, or return exact-window `moss` from the evidence collector. With none
-of these, the worker raises a configuration error before reasoning. Explicit
-`moss=False` permits recorded/no-MOSS test or ablation runs.
+Supply a `WindowMoss` or `LocalWindowMoss` callable, or return exact-window
+`moss` from the evidence collector. With neither, the worker raises before
+reasoning. `moss=False` is rejected by the online runtime.
 
 ## Scheduling and failures
 
@@ -150,3 +149,37 @@ job, hot identity inheritance, immutable snapshots, cutoff rejection, atomic
 failure/retry, selective/background reindexing, suffix completeness invalidation,
 ordered windows, backpressure, queued identity rebasing, final draining,
 writer-boundary commits, native application reuse, and publication rollback.
+
+## Path2 window aliases and temporal handoff
+
+Each consolidation response completes identity decisions, proposes `assign_alias`
+operations, and returns a compact `temporal_handoff` string. The executor owns alias
+scope: `previous_cutoff_clip < node.timestamp <= current_cutoff_clip`, with the actual
+media cutoffs saved for provenance. The model supplies no alias timestamps. Accepted
+records live in native `character_metadata[character_id].identity_aliases`; string
+aliases on legacy `set_name` operations are not trusted normalization rules.
+`revise_alias` moves an existing `alias_id` to a corrected character while retaining
+its window; `remove_alias` revokes it. Both require evidence and a rationale.
+
+Canonical text resolves window aliases after explicit occurrence resolutions. A
+conflicting alias stays unresolved. Raw `contents` are not changed by alias resolution;
+`retrieval_contents` holds the embedding input. `source_contents` also preserves the
+original construction text if legacy character-token retirement rewrites `contents`.
+Reindexing compares actual canonical inputs and embeds only changed nodes.
+
+The graph checkpoint holds one active `temporal_handoff` with its source window.
+There is no handoff before the first consolidation. Every following consolidation
+replaces it, including clearing it for missing/invalid secondary output. If decisions
+are rejected, its proposed summary is withheld because it may rely on those decisions;
+accepted identity decisions still follow the existing execution policy. Older
+checkpoint files retain their own summaries for audit, but those summaries are not
+passed back as consolidation evidence.
+
+Path2's copied construction implementation lives in
+`m3_adaptors/memory_construction.py`, with its base prompt in
+`m3_adaptors/prompts/memory_construction.md` and delta/context instructions in
+`m3_adaptors/construction.py`. The adaptor installs these functions through the
+existing backend hooks; no StreamMeCo source edit is required. Construction receives
+`RECENT TEMPORAL CONTEXT`, current native character/voice information, frames, and
+transcript. Unchanged background alone does not warrant a memory, and empty lists
+are valid. There is no per-clip rolling scene state. Path1 does not install this adaptor.

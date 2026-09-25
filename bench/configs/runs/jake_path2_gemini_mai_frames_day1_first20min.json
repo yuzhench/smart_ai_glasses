@@ -1,0 +1,13 @@
+{
+  "dataset": "egolife_jake_day1_first20min",
+  "path": 2,
+  "memory_backend": "gemini-3.8-flash",
+  "consolidation_backend": "gpt-5.6-sol",
+  "period_s": 1200,
+  "moss": {
+    "checkpoint": "/opt/streammeco/models/MOSS-Transcribe-Diarize",
+    "revision": "704aa4a9c304e8520be88901e0d1960158ef5b15",
+    "repository": "/opt/streammeco/repos/MOSS-Transcribe-Diarize"
+  },
+  "output_dir": "bench/results/jake_path2_gemini_mai_frames_day1_first20min_20260921"
+}

@@ -24,8 +24,8 @@ def to_openai_messages(messages):
     """Convert chat_qwen-style messages to OpenAI multimodal chat format.
 
     Input parts (see StreamMeCo/mmagent/utils/chat_qwen.py:generate_messages):
-    {"type": "text"}, {"type": "image", "image": data-uri|url|path},
-    {"type": "video", "video": data-uri|url|path}.
+    {"type": "text"}, {"type": "image", "image": data-uri|url|path}.
+    Video must be supplied as timestamped image frames by the memory backend.
     """
     converted = []
     for message in messages:
@@ -42,12 +42,42 @@ def to_openai_messages(messages):
                 parts.append({"type": "image_url",
                               "image_url": {"url": _media_url(part["image"], "image/jpeg")}})
             elif kind == "video":
-                parts.append({"type": "video_url",
-                              "video_url": {"url": _media_url(part["video"], "video/mp4")}})
+                raise ValueError("video parts are unsupported by this chat route; send timestamped image frames")
             else:
                 raise ValueError(f"unsupported message part type: {kind!r}")
         converted.append({**message, "content": parts})
     return converted
+
+
+def _frame_context(frames, source_fps, frame_fps):
+    """Sample already-decoded JPEGs in clip order for image-capable chat APIs."""
+    if not frames:
+        raise ValueError("memory generation requires decoded video frames")
+    source_fps = float(source_fps)
+    frame_fps = float(frame_fps)
+    if source_fps <= 0 or frame_fps <= 0 or frame_fps > source_fps:
+        raise ValueError("frame_fps must be positive and no greater than source fps")
+    indices = []
+    sample = 0
+    while True:
+        index = round(sample * source_fps / frame_fps)
+        if index >= len(frames):
+            break
+        if not indices or index != indices[-1]:
+            indices.append(index)
+        sample += 1
+    context = [{"type": "text", "content": (
+        "Chronological video frames follow. Times are relative to this clip. "
+        "Use the Voice features below for speech; do not infer speech from images."
+    )}]
+    for index in indices:
+        seconds = index / source_fps
+        minutes, remainder = divmod(seconds, 60)
+        context.extend((
+            {"type": "text", "content": f"Video frame at {int(minutes):02d}:{remainder:04.1f}:"},
+            {"type": "images/jpeg", "content": [frames[index]]},
+        ))
+    return context
 
 
 def _media_url(value, default_mime):
@@ -59,13 +89,19 @@ def _media_url(value, default_mime):
     return f"data:{default_mime};base64," + base64.b64encode(data).decode()
 
 
+def _api_key(backend):
+    """Env var named by api_key_env wins; inline "api_key" is the fallback."""
+    key_env = backend.get("api_key_env") or ""
+    return os.environ.get(key_env) or backend.get("api_key") or ""
+
+
 def chat_completion(backend, messages, *, timeout=None, attempts=5, backoff=2.0):
     """One OpenAI-compatible /chat/completions call -> (text, total_tokens)."""
     url = backend["base_url"].rstrip("/") + "/chat/completions"
     headers = {"Content-Type": "application/json"}
-    key_env = backend.get("api_key_env")
-    if key_env and os.environ.get(key_env):
-        headers["Authorization"] = "Bearer " + os.environ[key_env]
+    api_key = _api_key(backend)
+    if api_key:
+        headers["Authorization"] = "Bearer " + api_key
     payload = {"model": backend["model"], "messages": messages}
     if backend.get("temperature") is not None:
         payload["temperature"] = backend["temperature"]
@@ -108,9 +144,26 @@ def apply_memory_backend(backend):
     import mmagent.memory_processing_qwen as memory_processing_qwen
     import mmagent.utils.chat_qwen as chat_qwen
 
+    original_context = getattr(memory_processing_qwen,
+                               "_bench_native_generate_video_context", None)
+    if original_context is None:
+        original_context = memory_processing_qwen.generate_video_context
+        memory_processing_qwen._bench_native_generate_video_context = original_context
+
+    def generate_video_context(base64_frames, faces_list, voices_list,
+                               video_path=None, faces_input="face_only"):
+        context = original_context(base64_frames, faces_list, voices_list,
+                                   video_path, faces_input)
+        if not context or context[0].get("type") != "video_base64/mp4":
+            raise ValueError("unexpected memory video context format")
+        source_fps = memory_processing_qwen.processing_config.get("fps", 5)
+        frame_fps = backend.get("frame_fps", 2)
+        return _frame_context(base64_frames, source_fps, frame_fps) + context[1:]
+
     def get_response(messages):
         return chat_completion(backend, to_openai_messages(messages))
 
+    memory_processing_qwen.generate_video_context = generate_video_context
     chat_qwen.get_response = get_response
     memory_processing_qwen.get_response = get_response
     return get_response
@@ -123,9 +176,12 @@ def make_consolidation_proposer(backend):
 
     def proposer(packet, work):
         from consolidation.llm_consolidator import propose
+        key_env = backend.get("api_key_env") or "CONSOLIDATION_API_KEY"
+        if backend.get("api_key") and not os.environ.get(key_env):
+            os.environ[key_env] = backend["api_key"]
         return propose(packet, work, backend["model"],
                        endpoint=backend["base_url"],
-                       key_env=backend.get("api_key_env") or "CONSOLIDATION_API_KEY")
+                       key_env=key_env)
 
     return proposer
 
@@ -144,7 +200,7 @@ def register_chat_alias(backend):
     from mmagent.utils import chat_api
 
     name = backend["model"]
-    api_key = os.environ.get(backend.get("api_key_env") or "") or "bench-unused-key"
+    api_key = _api_key(backend) or "bench-unused-key"
     chat_api.config[name] = {"base_url": backend["base_url"], "api_key": api_key}
     chat_api.client[name] = openai.OpenAI(
         api_key=api_key, base_url=backend["base_url"])

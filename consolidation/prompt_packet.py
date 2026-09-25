@@ -90,8 +90,11 @@ def build_prompt_packet(packet, *, history_bytes=HISTORY_BYTES, packet_bytes=PAC
     for a in packet.get('original_assignments', []):
         row = {k: a[k] for k in ('evidence_id', 'utterance_id', 'method', 'threshold',
                'selected_candidate', 'decision', 'reason') if k in a}
+        ranked = sorted(a.get('candidates', []),
+                        key=lambda c: (-c.get('score', float('-inf')),
+                                       c.get('candidate_id') or ''))[:5]
         row['candidates'] = [{k: c[k] for k in ('candidate_id', 'score', 'eligible',
-                             'rejection_reason') if k in c} for c in a.get('candidates', [])]
+                             'rejection_reason') if k in c} for c in ranked]
         assignment_views.append(row)
     references = packet.get('current_references', {})
 
@@ -104,8 +107,12 @@ def build_prompt_packet(packet, *, history_bytes=HISTORY_BYTES, packet_bytes=PAC
         alignment_views = []
         for u in sorted(selected_obs & set(alignments)):
             a = alignments[u]
+            observation = observations[u]
             alignment_views.append(dict(evidence_id=a['evidence_id'], utterance_id=u,
-                alignment_status=a['alignment_status'], segment_ids=overlapping[u]))
+                alignment_status=a['alignment_status'], segment_ids=overlapping[u],
+                segment_overlaps_s={str(i): round(min(s['end'], observation['end_time']) -
+                    max(s['start'], observation['start_time']), 6)
+                    for i, s in enumerate(segments) if str(i) in overlapping[u]}))
         mids = {str(memories[e]['memory_node_id']) for e in ids & set(memories)}
         return dict(records=[views[i] for i in sorted(ids)],
                     alignments=alignment_views,
@@ -180,6 +187,7 @@ def build_prompt_packet(packet, *, history_bytes=HISTORY_BYTES, packet_bytes=PAC
     visible_faces = {f for e in visible_mem for f in re.findall(r'<(face_\d+)>', memories[e]['raw_text'])}
     characters = {c: dict(native_character_id=e.get('native_character_id'),
         canonical_name=e.get('canonical_name'), aliases=e.get('aliases', []),
+        identity_aliases=e.get('identity_aliases', []),
         assigned_count=assignment_counts[c],
         voice_ids=sorted(set(e.get('voice_ids', [])) & visible_voices),
         face_ids=sorted(set(e.get('face_ids', [])) & visible_faces),

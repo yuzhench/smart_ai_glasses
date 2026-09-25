@@ -73,6 +73,10 @@ def test_window_boundaries_returning_characters_and_current_moss(windows):
     assert view['characters']['person_1']['canonical_name'] is None
     assert view['characters']['person_1']['native_character_id'] == 'character_1'
     assert view['moss']['run_id'] == f'run_{windows}'
+    assert view['moss']['start_s'] == (windows - 1)*1200
+    assert view['moss']['cutoff_s'] == windows*1200
+    assert len(view['moss']['segments']) == 2
+    assert all(a['segment_overlaps_s'] for a in view['moss']['alignments'])
     assert all(f'/run_{windows}' in a['evidence_id'] for a in view['moss']['alignments'])
     assert report['historical_bytes'] <= report['history_limit_bytes']
     assert {m['memory_node_id'] for m in view['memories']} >= {str(windows)}
@@ -205,11 +209,47 @@ def test_boundary_context_asr_variants_and_new_moss_labels():
 def test_historical_budget_counts_assignment_and_moss_dependencies():
     _, _, packet = history_packet()
     packet['original_assignments'] = [dict(evidence_id='assignment/s/u1_0', utterance_id='s/u1_0',
-        candidates=[dict(candidate_id='voice_'+str(i), score=.5, eligible=False) for i in range(1000)])]
+        candidates=[dict(candidate_id='voice_'+str(i), score=.5, eligible=False,
+                         rejection_reason='x'*2000) for i in range(1000)])]
     view, scope, report = build_prompt_packet(packet, history_bytes=2500)
     assert 's/u1_0' not in scope['historical_observation_ids']
     assert not view['assignment_evidence']
     assert report['historical_bytes'] <= 2500
+
+
+def test_assignment_evidence_is_top5_sorted_descending():
+    _, _, packet = history_packet()
+    scores = {'voice_0': .9, 'voice_1': .3, 'voice_2': .7, 'voice_3': .7,
+              'voice_4': .5, 'voice_5': .1, 'voice_6': .8}
+    packet['original_assignments'] = [
+        dict(evidence_id='assignment/s/u3_0', utterance_id='s/u3_0', method='CAM++',
+             threshold=.6, decision='match', selected_candidate='voice_5',
+             candidates=[dict(candidate_id=cid, score=score, eligible=score >= .6,
+                              rejection_reason=None if score >= .6 else 'below_threshold')
+                         for cid, score in scores.items()]),
+        dict(evidence_id='assignment/s/u3_1', utterance_id='s/u3_1', method='CAM++',
+             threshold=.6, decision='new_voice', selected_candidate=None,
+             candidates=[dict(candidate_id='voice_1', score=.2, eligible=False,
+                              rejection_reason='below_threshold'),
+                         dict(candidate_id='voice_0', score=.4, eligible=False,
+                              rejection_reason='below_threshold')])]
+    view, _, _ = build_prompt_packet(packet)
+    evidence = {a['utterance_id']: a for a in view['assignment_evidence']}
+    top = evidence['s/u3_0']
+    assert [c['candidate_id'] for c in top['candidates']] == [
+        'voice_0', 'voice_6', 'voice_2', 'voice_3', 'voice_4']
+    assert [c['score'] for c in top['candidates']] == sorted(
+        [c['score'] for c in top['candidates']], reverse=True)
+    assert all(set(c) == {'candidate_id', 'score', 'eligible', 'rejection_reason'}
+               for c in top['candidates'])
+    assert {k: top[k] for k in ('evidence_id', 'utterance_id', 'method', 'threshold',
+            'decision', 'selected_candidate')} == dict(
+        evidence_id='assignment/s/u3_0', utterance_id='s/u3_0', method='CAM++',
+        threshold=.6, decision='match', selected_candidate='voice_5')
+    few = evidence['s/u3_1']
+    assert [c['candidate_id'] for c in few['candidates']] == ['voice_0', 'voice_1']
+    # The internal packet retains the complete pre-mutation score matrix.
+    assert len(packet['original_assignments'][0]['candidates']) == 7
 
 
 def test_shared_request_builder_saves_only_compact_user_input(tmp_path):

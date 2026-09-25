@@ -3,9 +3,9 @@
 Run from the project root (StreamMeCo-consolidation/):
 
     python -m bench bench/configs/runs/jake_path2_gemini.json
-    python -m bench bench/configs/runs/jake_path1_qwen.json --validate
+    python -m bench bench/configs/runs/jake_path1_gemini.json --validate
     python -m bench bench/configs/runs/jake_path2_gemini.json \
-        --set memory_backend=qwen-vllm --set consolidation_backend=gpt-consol
+        --set memory_backend=gemini-3.8-flash --set consolidation_backend=gpt-5.6-sol
 """
 import argparse
 import json
@@ -39,6 +39,9 @@ def main(argv=None):
                         help="resolve config and report; do not run")
     parser.add_argument("--set", dest="overrides", action="append", metavar="KEY=VALUE",
                         help="override a run-config key (path, memory_backend, ...)")
+    parser.add_argument("--resume-from", default=None, metavar="SNAPSHOT_DIR",
+                        help="path 2 only: skip construction; resume consolidation "
+                             "from a preserved snapshot.pkl/snapshot.json directory")
     args = parser.parse_args(argv)
 
     for entry in (ROOT, ROOT / "StreamMeCo"):
@@ -48,6 +51,7 @@ def main(argv=None):
     from bench import config as bench_config
     config = bench_config.load_run(Path(args.run_config).resolve(), args.backends,
                                    overrides=_overrides(args.overrides))
+    resume_from = Path(args.resume_from).resolve() if args.resume_from else None
 
     # Pristine modules read configs/*.json relative to the CWD.
     os.chdir(ROOT / "StreamMeCo")
@@ -56,6 +60,11 @@ def main(argv=None):
         print(json.dumps(bench_config.summarize(config), indent=2))
         if not config["dataset"]["clips"]:
             print("WARNING: dataset resolved to 0 clips", file=sys.stderr)
+        return
+
+    if args.resume_from:
+        from bench import resume
+        resume.resume_consolidation(config, resume_from)
         return
 
     from bench import runner

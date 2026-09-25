@@ -14,6 +14,10 @@ FIELDS = {
     'merge_voice': {'voice_ids': {'type':'array','items':VOICE,'minItems':1,'uniqueItems':True}, 'target_entity_id': PERSON, 'evidence_ids': IDS},
     'reassign_utterances': {'utterance_ids': IDS, 'from_voice_id': VOICE, 'target_entity_id': PERSON, 'evidence_ids': IDS},
     'set_name': {'entity_id': PERSON, 'name': STR, 'evidence_ids': IDS},
+    'assign_alias': {'entity_id': PERSON, 'phrase': STR, 'evidence_ids': IDS, 'rationale': STR},
+    'revise_alias': {'entity_id': PERSON, 'alias_id': STR, 'target_entity_id': PERSON,
+                     'evidence_ids': IDS, 'rationale': STR},
+    'remove_alias': {'entity_id': PERSON, 'alias_id': STR, 'evidence_ids': IDS, 'rationale': STR},
     'resolve_reference': {'memory_node_id': NODE, 'mention': STR, 'entity_id': PERSON, 'evidence_ids': IDS},
     'revise_claim': {'memory_node_id': NODE, 'status': {'enum':['contradicted','superseded']},
                      'replacement': {'type':['string','null']}, 'evidence_ids': IDS},
@@ -38,11 +42,15 @@ for op, fields in FIELDS.items():
                                               for key in ('content_index','start','end')}
 ENVELOPE = {'type':'object', 'properties': {
     'schema_version': {'const':1}, 'session_id':STR, 'base_graph_version':STR,
-    'evidence_cutoff_s': {'type':'number','minimum':0}, 'decisions':{'type':'array'}},
+    'evidence_cutoff_s': {'type':'number','minimum':0}, 'decisions':{'type':'array'},
+    # Validate secondary output separately so malformed handoffs cannot discard identity work.
+    'temporal_handoff': {}},
     'required':['schema_version','session_id','base_graph_version','evidence_cutoff_s','decisions'],
     'additionalProperties':False}
 PATCH_SCHEMA = dict(ENVELOPE, properties=dict(ENVELOPE['properties'], decisions={
-    'type':'array','items':{'oneOf':list(DECISIONS.values())}}))
+    'type':'array','items':{'oneOf':list(DECISIONS.values())}},
+    temporal_handoff={'type':'string','maxLength':1800}),
+    required=ENVELOPE['required'] + ['temporal_handoff'])
 
 
 def validate_envelope(patch):

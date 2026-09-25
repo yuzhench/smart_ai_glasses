@@ -145,9 +145,10 @@ class _Lifted:
         node = self.Node(self.next_node_id, text_type)
         node.embeddings = text['embeddings']
         node.metadata['contents'] = text['contents']
+        node.metadata['source_contents'] = list(text['contents'])
         node.metadata['timestamp'] = clip_id
         if character_identity.consolidated(self):
-            expected, trace = character_identity.canonicalize_contents(self, text['contents'])
+            expected, trace = character_identity.canonicalize_contents(self, text['contents'], clip_id=clip_id)
             if text.get('retrieval_contents') != expected:
                 raise ValueError('text embeddings must be computed from canonical retrieval contents')
             node.metadata.update(retrieval_contents=expected, retrieval_identity_trace=trace,
