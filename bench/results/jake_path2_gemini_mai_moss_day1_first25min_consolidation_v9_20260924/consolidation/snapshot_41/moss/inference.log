@@ -1,0 +1,16 @@
+MOSS_PREFLIGHT_OK 2.6.0+cu124 5.17.0 NVIDIA RTX A6000
+Loading weights:   0%|          | 0/683 [00:00<?, ?it/s]Loading weights:  91%|█████████ | 620/683 [00:00<00:00, 6162.23it/s]Loading weights: 100%|██████████| 683/683 [00:00<00:00, 5727.80it/s]
+[transformers] `MossTranscribeDiarizeProcessor` defines `feature_extractor_class = 'AutoFeatureExtractor'`, which is deprecated. Register the correct mapping in `AutoFeatureExtractor` instead.
+MODEL_LOADED 1.7
+INFERENCE_BEGIN 1217.96
+PROMPT_TOKENS 16064
+GENERATED_TOKENS 1000
+GENERATED_TOKENS 2000
+GENERATED_TOKENS 3000
+GENERATED_TOKENS 4000
+GENERATED_TOKENS 5000
+GENERATED_TOKENS 6000
+GENERATED_TOKENS 7000
+RAW_RESULT {'prompt_len': 16064, 'generated_tokens': 7732}
+WINDOW_COMPLETE 0 1217.96 segments 290 speakers 4 last_end 1215.71 elapsed_s 209.2
+MOSS_ALL_COMPLETE

@@ -286,9 +286,11 @@ consolidation is the intended pattern.
 
 ### 4.3 QA answerer and judge (`qa.backend`, `qa.judge_backend`)
 
-Both must be `openai_compatible`. The answerer does multi-step retrieval over
-the graph; the judge compares the prediction with ground truth. They default
-to the memory backend when omitted; override either:
+Both must be `openai_compatible`. For benchmark runs, the answerer performs
+one search over its path's current graph and one answer-model call through
+`m3_adaptors.one_shot_retrieval`. The judge compares the prediction with
+ground truth only when a question has an `answer` field. They default to the
+memory backend when omitted; override either:
 
 ```json
 "qa": {"questions": "...", "backend": "my-vlm",
@@ -518,7 +520,7 @@ export PYTHONPATH=/opt/streammeco/repos/3D-Speaker   # provides speakerlab (CAM+
 | `consolidation.jsonl` per-period timings | | x |
 | `consolidation/` evidence, audits, jobs | | x |
 | `graphs/{before,after}_<n>_consolidation.{md,pkl}` + `graphs/README.md` | | x |
-| `qa.jsonl` answers + verdicts | x | x |
+| `qa.jsonl` answers, retrieval traces, optional verdicts | x | x |
 
 On path 2, `bench/graphreplay.py` captures the live VideoGraph right **before**
 and **after** every consolidation boundary (and a final tail flush, if one

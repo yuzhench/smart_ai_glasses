@@ -183,8 +183,15 @@ def render_graph(graph, title='Video graph', level=1, source=None, output=None):
         def feature(value):
             match = re.fullmatch(r'(voice|face)_(\d+)', str(value))
             return f'[{value}](#{anchor(int(match[2]))})' if match else _cell(value)
-        result += _table(['Character', 'Canonical name', 'Face / voice'],
-                         [[_cell(k), _cell(character_metadata.get(k, {}).get('canonical_name') or '—'),
+
+        def aliases(metadata):
+            phrases = (record.get('phrase') for record in metadata.get('identity_aliases') or [])
+            return ', '.join(_cell(phrase) for phrase in dict.fromkeys(
+                phrase for phrase in phrases if phrase)) or '—'
+
+        result += _table(['Alias', 'Character', 'Canonical name', 'Face / voice'],
+                         [[aliases(character_metadata.get(k, {})), _cell(k),
+                           _cell(character_metadata.get(k, {}).get('canonical_name') or '—'),
                            ', '.join(feature(v) for v in values)]
                           for k, values in mappings.items()])
         result += ['</details>', '']

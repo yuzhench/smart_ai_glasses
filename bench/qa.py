@@ -3,9 +3,9 @@
 Questions carry ``ask_at_s`` (media time). The runner fires each question
 after the first committed clip whose ``end_s`` reaches it — and after any
 consolidation barrier at that point, so Path-2 answers see the consolidated
-graph. Answering reuses pristine ``retrieve.answer_with_retrieval`` /
-``verify_qa``; the backend is injected as a chat_api alias, so pristine
-logic runs unchanged on any configured model.
+graph. Answering uses the shared one-shot ``m3_adaptors`` retrieval adapter;
+the backend is injected as a chat_api alias. Optional verdicts still use the
+pristine ``verify_qa`` helper when an answer key is present.
 
 Questions format (JSON list or inline in the run config):
 
@@ -65,15 +65,16 @@ class OnlineQA:
         self.log.close()
 
     def _fire(self, graph, threshold_s, answered_at_s, late):
-        from mmagent.retrieve import answer_with_retrieval, verify_qa
+        from m3_adaptors.one_shot_retrieval import answer_with_retrieval
         due = [q for q in self.pending if q["ask_at_s"] <= threshold_s]
         self.pending = [q for q in self.pending if q["ask_at_s"] > threshold_s]
         for question in due:
             started = time.perf_counter()
-            prediction, _trace = answer_with_retrieval(
+            prediction, trace = answer_with_retrieval(
                 graph, question["question"], topk=self.topk, model=self.alias)
             verdict = None
             if question["answer"] is not None:
+                from mmagent.retrieve import verify_qa
                 verdict = verify_qa(question["question"], question["answer"],
                                     prediction, model=self.judge_alias)
             record = {
@@ -83,6 +84,7 @@ class OnlineQA:
                 "question": question["question"],
                 "ground_truth": question["answer"],
                 "prediction": prediction,
+                "retrieval": trace,
                 "verdict": verdict,
                 "wall_ms": (time.perf_counter() - started) * 1000,
             }

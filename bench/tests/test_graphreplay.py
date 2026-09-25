@@ -30,7 +30,8 @@ def test_capture_pair_writes_matching_format(tmp_path):
     assert pending["ordinal"] == "first"
     replayer.after(pending, _fake_graph(mappings={
         "character_0": ["voice_0", "face_4"], "character_1": ["voice_9"]},
-        metadata={"character_0": {"canonical_name": "Jake"}}))
+        metadata={"character_0": {"canonical_name": "Jake", "aliases": ["J"],
+                                  "identity_aliases": [{"phrase": "camera wearer"}]}}))
 
     before = (tmp_path / "graphs" / "before_first_consolidation.md").read_text()
     after = (tmp_path / "graphs" / "after_first_consolidation.md").read_text()
@@ -42,9 +43,10 @@ def test_capture_pair_writes_matching_format(tmp_path):
     assert "embeddings" not in before
     assert "refresh_info" not in before
     assert "2 characters: 1 single-feature mappings, 1 mappings joining" in after
-    assert "| Character | Canonical name | Face / voice |" in after
-    assert "| character_0 | Jake | [voice_0]" in after
-    assert "| character_1 | — | [voice_9]" in after
+    assert "| Alias | Character | Canonical name | Face / voice |" in after
+    assert "| camera wearer | character_0 | Jake | [voice_0]" in after
+    assert "| — | character_1 | — | [voice_9]" in after
+    assert "| J | character_0" not in after
 
     # Pickle round-trips for real replay; README indexes the pair.
     with open(tmp_path / "graphs" / "before_first_consolidation.pkl", "rb") as handle:
