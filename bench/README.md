@@ -6,9 +6,8 @@ run-config JSON. Nothing under `StreamMeCo/`, `consolidation/`, or
 modification exists: `StreamMeCo/mmagent/voice_processing.py` uses the lazy
 CAM++-only speaker chain; ERes2NetV2 was removed.)
 
-See **[TUTORIAL.md](TUTORIAL.md)** for the full configuration walkthrough and
-the current Jake DAY1 model setup (gemini-3.8-flash memory, gpt-5.6-sol
-consolidation, MAI-Transcribe-2 ASR, OpenRouter embeddings).
+See the [tutorial](../doc/TUTORIAL.md) for the configuration walkthrough and
+the [Jake DAY1 runbook](../doc/benchmark.md) for the full comparison setup.
 
 ## Run
 

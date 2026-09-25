@@ -3,7 +3,7 @@
 Deployment dependencies for `StreamMeCo-consolidation/` (Path 1: pristine
 StreamMeCo/M3 online memorization; Path 2: same run + online consolidation
 via `m3_adaptors`). Selectively distilled from the parent repo's
-`../docs/ARCHITECTURE.md` §2.1: voice embeddings are CAM++; the active ASR is MAI-Transcribe-2.
+the parent project's architecture notes: voice embeddings are CAM++; the active ASR is MAI-Transcribe-2.
 
 ---
 
@@ -55,11 +55,10 @@ A run config (`bench/configs/runs/*.json`) then picks backends by name:
 `memory_backend` (generation VLM, both paths) and `consolidation.backend`
 (Path 2 only) — they may be the same or different backends.
 
-Fetch both identity checkpoints with the pinned, checksum-verified downloader:
-
-```bash
-python gpu_setup/download_models.py --root /opt/streammeco/run/StreamMeCo --only all
-```
+Fetch and verify the identity checkpoints as described in the
+[Jake DAY1 runbook](benchmark.md#2-provision-the-gpu-and-all-dependencies).
+The historical `gpu_setup/download_models.py` helper is absent from this
+checkout.
 
 ### 1.2 Remote APIs
 
@@ -79,7 +78,7 @@ Embedding spaces are **not interchangeable**: CAM++ 192-D (voice), Buffalo-L
 ## 2. Software stack
 
 Reference host: Ubuntu 22.04, NVIDIA driver with **CUDA 12.4**, Python **3.10** venv
-(validated on RTX 4090; see the GPU runbook in the parent repo, `../docs/HYPERSTACK_GPU_RUNBOOK.md`).
+(validated on RTX 4090; the parent project's GPU runbook describes that host).
 
 ```bash
 sudo apt install -y build-essential ffmpeg git git-lfs \

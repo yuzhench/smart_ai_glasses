@@ -7,7 +7,10 @@ __pycache__/
 # Local secrets / credentials
 njc_Hyperstack*.txt
 
+# Local experiment and runtime error ledgers
+/experiment_GPU_record.md
+/RUNTIME_ERRORS.md
+
 # Large local run artifacts (not for GitHub)
 bench/results/
 bench/archive/
-

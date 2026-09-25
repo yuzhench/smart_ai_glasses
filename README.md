@@ -146,9 +146,9 @@ in-process VLM loader; `openai_compatible` = cloud API or a GPU checkpoint you
 serve, e.g. via `vllm serve`). A run config picks `path` (1 or 2),
 `memory_backend` (generation VLM), `consolidation_backend` (path 2 only),
 `period_s` (default 1200 s = 20 min), and an optional online-QA schedule
-(`qa.questions` with `ask_at_s`, answered via pristine
-`retrieve.answer_with_retrieval` on any configured backend). See
-`bench/README.md`.
+(`qa.questions` with `ask_at_s`, answered through the shared one-shot
+`m3_adaptors` retrieval adapter). See [bench/README.md](bench/README.md) and
+the [Jake DAY1 runbook](doc/benchmark.md).
 
 For any `openai_compatible` memory VLM, including one served locally with
 vLLM, the harness sends each clip as chronological, timestamped JPEG
@@ -171,7 +171,8 @@ and [vLLM's multimodal server guide](https://docs.vllm.ai/en/latest/serving/onli
 
 ## Launch notes (writer/GPU box)
 
-Full dependency + checkpoint + credential cookbook: **`GPU_DEPLOYMENT.md`**.
+Full dependency + checkpoint + credential cookbook:
+[GPU_DEPLOYMENT.md](doc/GPU_DEPLOYMENT.md).
 
 Recorded constraints for actually launching the pipeline (deliberately not
 worked around in code):
@@ -191,7 +192,7 @@ worked around in code):
   `processing_config["speaker_embedding_checkpoint"]`, else
   `models/camplus/campplus_cn_en_common.pt`.
 - **Other pristine edits.** Three small pristine deviations exist beyond
-  CAM++ (all documented in `RUNTIME_ERRORS.md`):
+  CAM++:
   `voice_processing.diarize_audio` uses the configured
   `processing_config["asr_provider"]` (MAI-Transcribe-2 via OpenRouter) when set, else falls back to
   the VLM named by `processing_config["diarization_model"]` (default
